@@ -62,18 +62,23 @@ void alien_effect(Mat* image, double blue, double green, double red){
 void distortion_effect(Mat* image, double k1, double k2){
     Mat aux = *image;
     int yPrev, xPrev, xCenter, yCenter;
-    double rSquare;
+    double rSquare, disX, disY;
     yCenter = aux.rows / 2;
     xCenter = aux.cols / 2;
     for (int y = 0; y < image->rows; y++){
         for (int x = 0; x < image->cols; x++){
-            rSquare = pow((x - xCenter), 2) + pow((y - yCenter), 2);
-            yPrev = y + (y - yCenter) * k1 * rSquare + (y - yCenter) * k2 * pow(rSquare, 2);
-            xPrev = x + (x - xCenter) * k1 * rSquare + (x - xCenter) * k2 * pow(rSquare, 2);
+            disY = y - yCenter;
+            disX = x - xCenter;
+            rSquare = pow(disX, 2) + pow(disY, 2);
+            yPrev = y + disY * k1 * rSquare + disY * k2 * pow(rSquare, 2);
+            xPrev = x + disX * k1 * rSquare + disX * k2 * pow(rSquare, 2);
             if ((yPrev < aux.rows) && (xPrev < aux.cols) && (yPrev >= 0) && (xPrev >= 0)){
-                aux.at<Vec3b>(y, x) = image->at<Vec3b>(yPrev, xPrev);
+                aux.at<Vec3b>(yPrev, xPrev) = image->at<Vec3b>(y, x);
             }
-            //cout << rSquare << " " << yPrev << " " << xPrev << " " << y << " " << x << " " << xCenter << " " << yCenter << endl;
+            if (rSquare < 30){
+                cout << rSquare << " " << yPrev << " " << xPrev << " " << y << " " << x << endl;
+
+            }
         }
     }
     *image = aux;
