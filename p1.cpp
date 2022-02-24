@@ -15,6 +15,8 @@ const int POSTER = 3;
 const int DISTORTION = 2;
 const int EXIT = 4;
 
+const int ALPHA_MAX = 3;
+
 
 void contrast_effect(Mat* image, double alpha){
   for (int y = 0; y < image->rows; y++){
@@ -101,7 +103,7 @@ int main(int argc, char** argv){
   VideoCapture capture;
   capture.open(0);
   Mat image;
-  double alpha = 1.0; /*< Simple contrast control */
+  int alpha = 1; /*< Simple contrast control */
   int option, div, n_colors;
   double blue, green, red;
   float k1, k2;
@@ -124,8 +126,8 @@ int main(int argc, char** argv){
 
     switch (option){
     case CONTRAST:
-      cout << "* Enter the alpha value [1.0-3.0]: ";
-      cin >> alpha;
+      //cout << "* Enter the alpha value [1.0-3.0]: ";
+      //cin >> alpha;
       break;
     case ALIEN:
       cout << "* Enter the blue value reduce factor [0.0-1.0]: ";
@@ -176,6 +178,7 @@ int main(int argc, char** argv){
       }
 
       imshow("Original Image", image);
+      createTrackbar("coso", "Original Image", &alpha, ALPHA_MAX);
 
       int c = waitKey(10);
       if ((char)c == 'q'){
