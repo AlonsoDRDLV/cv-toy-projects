@@ -16,10 +16,10 @@ const int DISTORTION = 2;
 const int EXIT = 4;
 
 
-void contrast_effect(Mat* image, double alpha) {
-  for (int y = 0; y < image->rows; y++) {
-    for (int x = 0; x < image->cols; x++) {
-      for (int c = 0; c < image->channels(); c++) {
+void contrast_effect(Mat* image, double alpha){
+  for (int y = 0; y < image->rows; y++){
+    for (int x = 0; x < image->cols; x++){
+      for (int c = 0; c < image->channels(); c++){
         image->at<Vec3b>(y, x)[c] =
           saturate_cast<uchar>(alpha * image->at<Vec3b>(y, x)[c]);
       }
@@ -27,14 +27,14 @@ void contrast_effect(Mat* image, double alpha) {
   }
 }
 
-void alien_effect(Mat* image, double blue, double green, double red) {
+void alien_effect(Mat* image, double blue, double green, double red){
   Mat image_HSV;
   Mat image_YCrCb;
   cvtColor(*image, image_HSV, CV_BGR2HSV);
   cvtColor(*image, image_YCrCb, CV_BGR2YCrCb);
   double b, g, r, h, s, y, cr, cb;
-  for (int row = 0; row < image->rows; row++) {
-    for (int col = 0; col < image->cols; col++) {
+  for (int row = 0; row < image->rows; row++){
+    for (int col = 0; col < image->cols; col++){
       b = image->at<Vec3b>(row, col)[0];
       g = image->at<Vec3b>(row, col)[1];
       r = image->at<Vec3b>(row, col)[2];
@@ -53,7 +53,7 @@ void alien_effect(Mat* image, double blue, double green, double red) {
           (cr >= (0.3448 * cb) + 76.2069) &&
           (cr >= (-4.5652 * cb) + 234.5652) &&
           (cr <= (-1.15 * cb) + 301.75) &&
-          (cr <= (-2.2857 * cb) + 432.85))) {
+          (cr <= (-2.2857 * cb) + 432.85))){
         image->at<Vec3b>(row, col)[0] = b * blue;
         image->at<Vec3b>(row, col)[1] = g * green;
         image->at<Vec3b>(row, col)[2] = r * red;
@@ -63,56 +63,55 @@ void alien_effect(Mat* image, double blue, double green, double red) {
 }
 
 //reduce to 2^div colors
-void poster_effect(Mat* img, int div = 5) {
+void poster_effect(Mat* img, int div = 5){
   uchar mask = 0xFF;
   mask <<= div;
-  for (int i = 0; i < img->rows; i++) {
+  for (int i = 0; i < img->rows; i++){
     uchar* data = img->ptr<uchar>(i);
-    for (int j = 0; j < img->cols * img->channels(); j++) {
+    for (int j = 0; j < img->cols * img->channels(); j++){
       data[j] &= mask;
     }
   }
 }
 
-void distortion_effect(Mat* image, double k1, double k2) {
-  Mat aux = *image;
+void distortion_effect(Mat* image, float k1, float k2){
+  //Mat aux = *image;
+  Mat aux(image->size(), 16);
   int yPrev, xPrev, xCenter, yCenter;
   double rSquare, disX, disY;
   yCenter = aux.rows / 2;
   xCenter = aux.cols / 2;
-  for (int y = 0; y < image->rows; y++) {
-    for (int x = 0; x < image->cols; x++) {
+  for (int y = 0; y < image->rows; y++){
+    for (int x = 0; x < image->cols; x++){
       disY = y - yCenter;
       disX = x - xCenter;
       rSquare = pow(disX, 2) + pow(disY, 2);
       yPrev = y + disY * k1 * rSquare + disY * k2 * pow(rSquare, 2);
       xPrev = x + disX * k1 * rSquare + disX * k2 * pow(rSquare, 2);
-      if ((yPrev < aux.rows) && (xPrev < aux.cols) && (yPrev >= 0) && (xPrev >= 0)) {
+      if ((yPrev < aux.rows) && (xPrev < aux.cols) && (yPrev >= 0) && (xPrev >= 0)){
         aux.at<Vec3b>(yPrev, xPrev) = image->at<Vec3b>(y, x);
-      }
-      if (rSquare < 30) {
-        cout << rSquare << " " << yPrev << " " << xPrev << " " << y << " " << x << endl;
-
       }
     }
   }
   *image = aux;
 }
 
-int main(int argc, char** argv) {
+
+int main(int argc, char** argv){
   VideoCapture capture;
   capture.open(0);
   Mat image;
   double alpha = 1.0; /*< Simple contrast control */
   int option, div, n_colors;
-  double blue, green, red, k1, k2;
+  double blue, green, red;
+  float k1, k2;
   bool configured = false;
 
-  if (!capture.isOpened()) {
+  if (!capture.isOpened()){
     return -1;
   }
 
-  while (1) {
+  while (1){
     cout << " Basic Linear Transforms " << endl;
     cout << "-------------------------" << endl;
     cout << "* Enter the filter to apply: " << endl;
@@ -123,7 +122,7 @@ int main(int argc, char** argv) {
     cout << "* " << EXIT << ") Exit" << endl;
     cin >> option;
 
-    switch (option) {
+    switch (option){
     case CONTRAST:
       cout << "* Enter the alpha value [1.0-3.0]: ";
       cin >> alpha;
@@ -154,14 +153,14 @@ int main(int argc, char** argv) {
     }
 
 
-    while (true) {
+    while (true){
       capture.read(image);
-      if (image.empty()) {
+      if (image.empty()){
         cout << "Could not load the image from the camera!\n" << endl;
         return -1;
       }
 
-      switch (option) {
+      switch (option){
       case CONTRAST:
         contrast_effect(&image, alpha);
         break;
@@ -179,7 +178,7 @@ int main(int argc, char** argv) {
       imshow("Original Image", image);
 
       int c = waitKey(10);
-      if ((char)c == 'q') {
+      if ((char)c == 'q'){
         cvDestroyWindow("Original Image");
         break;
       }
