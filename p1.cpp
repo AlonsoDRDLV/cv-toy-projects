@@ -1,5 +1,7 @@
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/highgui.hpp"
+#include "opencv2/objdetect.hpp"
+#include "opencv2/imgproc.hpp"
 #include "cvui.h"
 #include <iostream>
 #include <cmath>
@@ -11,9 +13,10 @@ using namespace cv;
 
 const int CONTRAST = 0;
 const int ALIEN = 1;
-const int POSTER = 3;
 const int DISTORTION = 2;
-const int EXIT = 4;
+const int POSTER = 3;
+const int FACE_BLUR = 4;
+const int EXIT = 5;
 
 const int ALPHA_MAX = 3;
 
@@ -99,15 +102,44 @@ void distortion_effect(Mat* image, float k1, float k2){
 }
 
 
+void face_blur_effect(Mat* image, CascadeClassifier* face_cascade, int blur_factor){
+  Mat gray_image(image->size(), 16);
+  cvtColor(*image, gray_image, COLOR_BGR2GRAY);
+  std::vector<Rect> faces;
+  face_cascade->detectMultiScale(gray_image, faces);
+  int x, y, h, w;
+
+  if (blur_factor >= 1){
+    for (int i = 0; i < faces.size(); i++){
+      x = faces[i].x;
+      y = faces[i].y;
+      w = faces[i].width;
+      h = faces[i].height;
+      Mat face_mat(h, w, 16);
+      Rect face_rect(x, y, w, h);
+      Mat aux = *image; // Quiero quitar esta línea pero no sé cómo
+      aux(face_rect).copyTo(face_mat);
+      medianBlur(face_mat, face_mat, blur_factor * 2 + 1);
+      face_mat.copyTo(aux(face_rect));
+    }
+  }
+}
+
 int main(int argc, char** argv){
   VideoCapture capture;
   capture.open(0);
+  CascadeClassifier face_cascade;
   Mat image;
   int alpha = 1; /*< Simple contrast control */
-  int option, div, n_colors;
+  int option, div, n_colors, blur_factor;
   double blue, green, red;
   float k1, k2;
   bool configured = false;
+
+  if (!face_cascade.load("C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\haarcascade_frontalface_default.xml")){
+    cout << "--(!)Error loading face cascade\n";
+    return -1;
+  }
 
   if (!capture.isOpened()){
     return -1;
@@ -148,6 +180,10 @@ int main(int argc, char** argv){
       cin >> n_colors;
       div = 8 - log2(n_colors);
       break;
+    case FACE_BLUR:
+      cout << "* blur factor please:";
+      cin >> blur_factor;
+      break;
     case EXIT:
       return 0;
     default:
@@ -174,6 +210,9 @@ int main(int argc, char** argv){
         break;
       case POSTER:
         poster_effect(&image, div);
+        break;
+      case FACE_BLUR:
+        face_blur_effect(&image, &face_cascade, blur_factor);
         break;
       }
 
