@@ -16,7 +16,8 @@ const int ALIEN = 1;
 const int DISTORTION = 2;
 const int POSTER = 3;
 const int FACE_BLUR = 4;
-const int EXIT = 5;
+const int FRACTAL_TRACE = 5;
+const int EXIT = 6;
 
 const int ALPHA_MAX = 3;
 
@@ -101,7 +102,6 @@ void distortion_effect(Mat* image, float k1, float k2){
   *image = aux;
 }
 
-
 void face_blur_effect(Mat* image, CascadeClassifier* face_cascade, int blur_factor){
   Mat gray_image(image->size(), 16);
   cvtColor(*image, gray_image, COLOR_BGR2GRAY);
@@ -125,14 +125,42 @@ void face_blur_effect(Mat* image, CascadeClassifier* face_cascade, int blur_fact
   }
 }
 
+void fractal_trace_effect(Mat* image, int depth, float factX, 
+    float factY){
+  Mat aux(image->size(), 16);
+  double auxX, auxY, newX, newY, tmp;
+
+  for (int y = 0; y < image->rows; y++){
+    for (int x = 0; x < image->cols; x++){
+      auxX = x;
+      auxY = y;
+      for (int i = 0; i < depth; i++){
+        newX = auxX * auxX;
+        newY = auxY * auxY;
+        auxY = int(factY * (2 * auxX * auxY + auxY)) % aux.rows;
+        auxX = int(factX * (newX - newY + auxX)) % aux.cols;
+        if (auxX < 0){
+          auxX += aux.cols;
+        }
+        if (auxY < 0){
+          auxY += aux.rows;
+        }
+      }
+      aux.at<Vec3b>(y, x) = image->at<Vec3b>(auxY, auxX);
+    }
+  }
+  *image = aux;
+}
+
 int main(int argc, char** argv){
   VideoCapture capture;
   capture.open(0);
   CascadeClassifier face_cascade;
   Mat image;
   int alpha = 1; /*< Simple contrast control */
-  int option, div, n_colors, blur_factor;
+  int option, div, n_colors, blur_factor, depth;
   double blue, green, red;
+  float factorX, factorY;
   float k1, k2;
   bool configured = false;
 
@@ -153,6 +181,8 @@ int main(int argc, char** argv){
     cout << "* " << ALIEN << ") Alien effect" << endl;
     cout << "* " << DISTORTION << ") Distortion effect" << endl;
     cout << "* " << POSTER << ") Poster effect" << endl;
+    cout << "* " << FACE_BLUR << ") Face blur effect" << endl;
+    cout << "* " << FRACTAL_TRACE << ") Fractal trace effect" << endl;
     cout << "* " << EXIT << ") Exit" << endl;
     cin >> option;
 
@@ -184,6 +214,16 @@ int main(int argc, char** argv){
       cout << "* blur factor please:";
       cin >> blur_factor;
       break;
+    case FRACTAL_TRACE:
+      cout << "* depth please (an integer ej:3):";
+      cin >> depth;
+      cout << "* horizontal factor please (an integer ej:3):";
+      cin >> factorX;
+      cout << "* vertical factor please (an integer ej:3):";
+      cin >> factorY;
+      factorX = factorX/ 1000;
+      factorY = factorY/ 1000;
+      break;
     case EXIT:
       return 0;
     default:
@@ -213,6 +253,9 @@ int main(int argc, char** argv){
         break;
       case FACE_BLUR:
         face_blur_effect(&image, &face_cascade, blur_factor);
+        break;
+      case FRACTAL_TRACE:
+        fractal_trace_effect(&image, depth, factorX, factorY);
         break;
       }
 
