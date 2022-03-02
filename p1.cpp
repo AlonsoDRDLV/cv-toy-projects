@@ -21,7 +21,7 @@ const int EXIT = 6;
 
 const int ALPHA_MAX = 3;
 
-
+//Tener en cuenta overflow
 void contrast_effect(Mat* image, double alpha){
   for (int y = 0; y < image->rows; y++){
     for (int x = 0; x < image->cols; x++){
@@ -95,7 +95,7 @@ void distortion_effect(Mat* image, float k1, float k2){
       yPrev = y + disY * k1 * rSquare + disY * k2 * pow(rSquare, 2);
       xPrev = x + disX * k1 * rSquare + disX * k2 * pow(rSquare, 2);
       if ((yPrev < aux.rows) && (xPrev < aux.cols) && (yPrev >= 0) && (xPrev >= 0)){
-        aux.at<Vec3b>(yPrev, xPrev) = image->at<Vec3b>(y, x);
+        aux.at<Vec3b>(y, x) = image->at<Vec3b>(yPrev, xPrev);
       }
     }
   }
@@ -106,7 +106,7 @@ void face_blur_effect(Mat* image, CascadeClassifier* face_cascade, int blur_fact
   Mat gray_image(image->size(), 16);
   cvtColor(*image, gray_image, COLOR_BGR2GRAY);
   std::vector<Rect> faces;
-  face_cascade->detectMultiScale(gray_image, faces);
+  face_cascade->detectMultiScale(gray_image, faces); // solo acepta grises el classifier por eso la imagen gris
   int x, y, h, w;
 
   if (blur_factor >= 1){
@@ -119,14 +119,13 @@ void face_blur_effect(Mat* image, CascadeClassifier* face_cascade, int blur_fact
       Rect face_rect(x, y, w, h);
       Mat aux = *image; // Quiero quitar esta línea pero no sé cómo
       aux(face_rect).copyTo(face_mat);
-      medianBlur(face_mat, face_mat, blur_factor * 2 + 1);
+      medianBlur(face_mat, face_mat, blur_factor * 2 + 1); // la fórmula rara es porque solo acepta impares
       face_mat.copyTo(aux(face_rect));
     }
   }
 }
 
-void fractal_trace_effect(Mat* image, int depth, float factX, 
-    float factY){
+void fractal_trace_effect(Mat* image, int depth, float factX, float factY){
   Mat aux(image->size(), 16);
   double auxX, auxY, newX, newY, tmp;
 
