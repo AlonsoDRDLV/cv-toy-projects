@@ -161,6 +161,8 @@ int main(int argc, char** argv){
   int option, div, n_colors, blur_factor, depth;
   double blue, green, red;
   float factorX, factorY;
+  int aux1, aux2, aux3;
+  aux1 = aux2 = aux3 = 1;
   float k1, k2;
   bool configured = false;
 
@@ -238,6 +240,9 @@ int main(int argc, char** argv){
         return -1;
       }
 
+
+      imshow("Original Image", image);
+
       switch (option){
       case CONTRAST:
         contrast_effect(&image, alpha);
@@ -255,12 +260,17 @@ int main(int argc, char** argv){
         face_blur_effect(&image, &face_cascade, blur_factor);
         break;
       case FRACTAL_TRACE:
+        createTrackbar("coso1", "Original Image", &aux1, 100);
+        createTrackbar("coso2", "Original Image", &aux2, 100);
+        createTrackbar("coso3", "Original Image", &aux3, 100);
+        depth = aux1;
+        factorX = aux2 / 1000.f;
+        factorY = aux3 / 1000.f;
         fractal_trace_effect(&image, depth, factorX, factorY);
         break;
       }
+      imshow("Changed Image", image);
 
-      imshow("Original Image", image);
-      createTrackbar("coso", "Original Image", &alpha, ALPHA_MAX);
 
       int c = waitKey(10);
       if ((char)c == 'q'){
