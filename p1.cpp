@@ -1,4 +1,4 @@
-﻿#include "opencv2/imgcodecs.hpp"
+#include "opencv2/imgcodecs.hpp"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "opencv2/objdetect.hpp"
@@ -193,7 +193,7 @@ int main(int argc, char** argv) {
   float factorX, factorY;
   int aux1, aux2, aux3;
   aux1 = aux2 = aux3 = 1;
-  float k1 = 0.000001f, k2 = 0.000001f;
+  float k1 = 0.000000f, k2 = 0.0f;
   bool configured = false;
 
   if (!face_cascade.load("C:\\Users\\AlonsoDRDLV\\Documents\\GitHub\\super-duper-system\\haarcascade_frontalface_default.xml")) {
@@ -215,12 +215,12 @@ int main(int argc, char** argv) {
     switch (option) {
     case -1:
       cvui::context(NOMBRE_VENTANA_INICIAL);  //indica que los siguientes elementos son de la ventana inicial
-      
+
       init_window_image = Scalar(10, 10, 10); // Colorear fondo
       cvui::text(init_window_image, 50, 30, "Elija un filtro", 2 * cvui::DEFAULT_FONT_SCALE);
-       
+
       if (cvui::button(init_window_image, 50, 60, "Contraste", cvui::DEFAULT_FONT_SCALE, 0x303030)) {
-        option = CONTRAST;        
+        option = CONTRAST;
         openWindow(NOMBRE_VENTANA_CONTRASTE);
       }
       if (cvui::button(init_window_image, 50, 90, "Alien", cvui::DEFAULT_FONT_SCALE, 0x303030)) {
@@ -252,7 +252,7 @@ int main(int argc, char** argv) {
       break;
     case CONTRAST:
       cvui::context(NOMBRE_VENTANA_CONTRASTE);
-      
+
       filter_window_image = Scalar(10, 10, 10);
       cvui::text(filter_window_image, 50, 30, "Nivel de contraste", cvui::DEFAULT_FONT_SCALE);
       cvui::trackbar(filter_window_image, 80, 60, 150, &alpha, 1.0, 3.0, 0.1);
@@ -317,9 +317,9 @@ int main(int argc, char** argv) {
 
       filter_window_image = Scalar(10, 10, 10);
       cvui::text(filter_window_image, 50, 30, "k1", cvui::DEFAULT_FONT_SCALE);
-      cvui::trackbar(filter_window_image, 80, 60, 150, &k1, 0.000001f, 0.001f, 0.0001f);
-      cvui::text(filter_window_image, 50, 90, "k2", cvui::DEFAULT_FONT_SCALE);
-      cvui::trackbar(filter_window_image, 80, 120, 150, &k2, 0.0000001f, 0.0001f, 0.0001f);
+      cvui::trackbar(filter_window_image, 80, 60, 150, &k1, -0.000009f, 0.000009f, 0.000001f, "%.6Lf");
+      //cvui::text(filter_window_image, 50, 90, "k2", cvui::DEFAULT_FONT_SCALE);
+      //cvui::trackbar(filter_window_image, 80, 120, 150, &k2, -0.000009f, 0.000009f, 0.000001f, "%.6Lf");
       if (cvui::button(filter_window_image, 50, 220, "Atras", cvui::DEFAULT_FONT_SCALE, 0x303030)) {
         option = -1;
       }
@@ -405,12 +405,12 @@ int main(int argc, char** argv) {
       cvui::context(NOMBRE_VENTANA_FRACTAL);
 
       filter_window_image = Scalar(10, 10, 10);
-      cvui::text(filter_window_image, 50, 30, "no se", cvui::DEFAULT_FONT_SCALE);
-      cvui::trackbar(filter_window_image, 80, 60, 150, &aux1, 1, 100, 1);
-      cvui::text(filter_window_image, 50, 90, "no se", cvui::DEFAULT_FONT_SCALE);
-      cvui::trackbar(filter_window_image, 80, 120, 150, &aux2, 1, 100, 1);
-      cvui::text(filter_window_image, 50, 150, "no se", cvui::DEFAULT_FONT_SCALE);
-      cvui::trackbar(filter_window_image, 80, 180, 150, &aux3, 1, 100, 1);
+      cvui::text(filter_window_image, 50, 50, "profundidad", cvui::DEFAULT_FONT_SCALE);
+      cvui::trackbar(filter_window_image, 80, 60, 150, &aux1, 1, 10, 1);
+      cvui::text(filter_window_image, 50, 110, "X", cvui::DEFAULT_FONT_SCALE);
+      cvui::trackbar(filter_window_image, 80, 120, 150, &aux2, 1, 10, 1);
+      cvui::text(filter_window_image, 50, 170, "Y", cvui::DEFAULT_FONT_SCALE);
+      cvui::trackbar(filter_window_image, 80, 180, 150, &aux3, 1, 10, 1);
       if (cvui::button(filter_window_image, 50, 220, "Atras", cvui::DEFAULT_FONT_SCALE, 0x303030)) {
         option = -1;
       }
@@ -428,7 +428,6 @@ int main(int argc, char** argv) {
         factorX = aux2 / 1000.f;
         factorY = aux3 / 1000.f;
         fractal_trace_effect(&image, depth, factorX, factorY);
-        face_blur_effect(&image, &face_cascade, blur_factor);
         imshow("Changed Image", image);
 
       }
@@ -445,7 +444,7 @@ int main(int argc, char** argv) {
     }
 
 
-    
+
     if (waitKey(20) == 27) {
       break;
     }
