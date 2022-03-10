@@ -196,7 +196,7 @@ int main(int argc, char** argv) {
   float k1 = 0.000000f, k2 = 0.0f;
   bool configured = false;
 
-  if (!face_cascade.load("C:\\Users\\AlonsoDRDLV\\Documents\\GitHub\\super-duper-system\\haarcascade_frontalface_default.xml")) {
+  if (!face_cascade.load("C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\haarcascade_frontalface_default.xml")) {
     cout << "--(!)Error loading face cascade\n";
     return -1;
   }
