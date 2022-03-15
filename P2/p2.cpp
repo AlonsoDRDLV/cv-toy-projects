@@ -27,38 +27,23 @@ Mat our_Canny(Mat source);
 
 
 int main(int argc, char** argv){
+  Mat image, copy, altered_image, opencv_image;
+  std::string imageName = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P2\\recanny.jpg";
 
-  cout << "\nPress 'ESC' to exit program.\nPress 'R' to reset values ( ksize will be -1 equal to Scharr function )";
-  // First we declare the variables we are going to use
-  Mat image, src, src_gray;
-  Mat grad;
-  int ksize = 3;
-  int scale = 1;
-  int delta = 0;
-  int ddepth = CV_16S;
-  std::string imageName = "C:\\Users\\pica\\Desktop\\CUARTO\\CUATRI2\\VC\\PRACTICAS\\P2\\Contornos\\poster.pgm";
-  // As usual we load our source image (src)
-  image = imread(samples::findFile(imageName), IMREAD_COLOR); // Load an image
-  // Check if image is loaded fine
+  image = imread(samples::findFile(imageName), IMREAD_COLOR);
   if(image.empty()){
     printf("Error opening image: %s\n", imageName.c_str());
     return EXIT_FAILURE;
   }
 
-  // Remove noise by blurring with a Gaussian filter ( kernel size = 3 )
-  GaussianBlur(image, src, Size(3, 3), 0, 0, BORDER_DEFAULT);
-  // Convert the image to grayscale
-  cvtColor(src, src_gray, COLOR_BGR2GRAY);
+  copy = image.clone();
 
-  Mat altered_image, opencv_image;
-
-  altered_image = their_Canny(src_gray);
-
-  opencv_image = their_Canny(src_gray);
+  altered_image = their_Canny(image);
+  opencv_image = our_Canny(copy);
   
-  imshow("orig", image);
+ /* imshow("orig", image);
   imshow("pruebas", altered_image);
-  imshow("opencv", opencv_image);
+  imshow("opencv", opencv_image);*/
 
   waitKey(0);
 
@@ -81,9 +66,13 @@ void closeWindow(const cv::String& name){
 }
 
 Mat their_Sobel(Mat source){
-  Mat altered_image, scharrX, scharrY, gradX, gradY;
-  Sobel(source, scharrX, CV_16S, 1, 0, 3, 1, 0, BORDER_DEFAULT);
-  Sobel(source, scharrY, CV_16S, 0, 1, 3, 1, 0, BORDER_DEFAULT);
+  Mat altered_image, scharrX, scharrY, gradX, gradY, blurred_source, gray_blurred_source;
+  GaussianBlur(source, blurred_source, Size(3, 3), 0, 0, BORDER_DEFAULT);
+  
+  cvtColor(blurred_source, gray_blurred_source, COLOR_BGR2GRAY);
+
+  Sobel(gray_blurred_source, scharrX, CV_16S, 1, 0, 3, 1, 0, BORDER_DEFAULT);
+  Sobel(gray_blurred_source, scharrY, CV_16S, 0, 1, 3, 1, 0, BORDER_DEFAULT);
 
   convertScaleAbs(scharrX, gradX);
   convertScaleAbs(scharrY, gradY);
@@ -92,7 +81,8 @@ Mat their_Sobel(Mat source){
 }
 
 Mat our_Sobel(Mat source){
-  Mat sobelX, sobelY, gradX, gradY, altered_image;
+  Mat altered_image, sobelX, sobelY, gradX, gradY, blurred_source, gray_blurred_source;
+
   Mat horizontalK = (Mat_<float>(3, 3) <<
     1, 2, 1,
     0, 0, 0,
@@ -102,8 +92,12 @@ Mat our_Sobel(Mat source){
     -2, 0, 2,
     -1, 0, 1);
 
-  filter2D(source, sobelX, CV_64F, verticalK);
-  filter2D(source, sobelY, CV_64F, horizontalK);
+  GaussianBlur(source, blurred_source, Size(3, 3), 0, 0, BORDER_DEFAULT);
+
+  cvtColor(blurred_source, gray_blurred_source, COLOR_BGR2GRAY);
+
+  filter2D(gray_blurred_source, sobelX, CV_16S, verticalK);
+  filter2D(gray_blurred_source, sobelY, CV_16S, horizontalK);
 
   convertScaleAbs(sobelX, gradX);
   convertScaleAbs(sobelY, gradY);
@@ -112,9 +106,14 @@ Mat our_Sobel(Mat source){
 }
 
 Mat their_Scharr(Mat source){
-  Mat altered_image, scharrX, scharrY, gradX, gradY;
-  Scharr(source, scharrX, CV_16S, 1, 0, 1, 0, BORDER_DEFAULT);
-  Scharr(source, scharrY, CV_16S, 0, 1, 1, 0, BORDER_DEFAULT);
+  Mat altered_image, scharrX, scharrY, gradX, gradY, blurred_source, gray_blurred_source;
+
+  GaussianBlur(source, blurred_source, Size(3, 3), 0, 0, BORDER_DEFAULT);
+
+  cvtColor(blurred_source, gray_blurred_source, COLOR_BGR2GRAY);
+
+  Scharr(gray_blurred_source, scharrX, CV_16S, 1, 0, 1, 0, BORDER_DEFAULT);
+  Scharr(gray_blurred_source, scharrY, CV_16S, 0, 1, 1, 0, BORDER_DEFAULT);
 
   convertScaleAbs(scharrX, gradX);
   convertScaleAbs(scharrY, gradY);
@@ -123,7 +122,7 @@ Mat their_Scharr(Mat source){
 }
 
 Mat our_Scharr(Mat source){
-  Mat scharrX, scharrY, gradX, gradY, altered_image;
+  Mat scharrX, scharrY, gradX, gradY, altered_image, blurred_source, gray_blurred_source;
   Mat horizontalK = (Mat_<float>(3, 3) <<
     3, 10, 3,
     0, 0, 0,
@@ -133,24 +132,33 @@ Mat our_Scharr(Mat source){
     -10, 0, 10,
     -3, 0, 3);
 
-  filter2D(source, scharrX, CV_64F, verticalK);
-  filter2D(source, scharrY, CV_64F, horizontalK);
+  GaussianBlur(source, blurred_source, Size(3, 3), 0, 0, BORDER_DEFAULT);
+
+  cvtColor(blurred_source, gray_blurred_source, COLOR_BGR2GRAY);
+
+  filter2D(gray_blurred_source, scharrX, CV_16S, verticalK);
+  filter2D(gray_blurred_source, scharrY, CV_16S, horizontalK);
 
   return altered_image;
 }
 
 Mat their_Canny(Mat source){
-  Mat altered_image, detected_edges;
-  blur(source, detected_edges, Size(3, 3));
-  Canny(detected_edges, detected_edges, 0, 0 * 3, 3);
+  Mat altered_image, canny_result, blurred_source, gray_blurred_source;
+
+  GaussianBlur(source, blurred_source, Size(5, 5), 0, 0, BORDER_DEFAULT);
+
+  cvtColor(blurred_source, gray_blurred_source, COLOR_BGR2GRAY);
+
+  Canny(gray_blurred_source, canny_result, 0, 0 * 3, 3);
 
   altered_image = Scalar::all(0);
-  source.copyTo(altered_image, detected_edges);
+  gray_blurred_source.copyTo(altered_image, canny_result);
   return altered_image;
 }
 
 Mat our_Canny(Mat source){
-  Mat altered_image, cannyX, cannyY, gradX, gradY, detected_edges;
+  Mat altered_image, cannyX, cannyY, gradX, gradY, blurred_source, gray_blurred_source, canny_result;
+  Mat angles(source.size(), source.type());
   Mat horizontalK = (Mat_<float>(3, 3) <<
     1, 2, 1,
     0, 0, 0,
@@ -159,15 +167,38 @@ Mat our_Canny(Mat source){
     -1, 0, 1,
     -2, 0, 2,
     -1, 0, 1);
+    
+  imshow("1", source);
 
-  filter2D(source, cannyX, CV_64F, verticalK);
-  filter2D(source, cannyY, CV_64F, horizontalK);
+  GaussianBlur(source, blurred_source, Size(5, 5), 0, 0, BORDER_DEFAULT);
+
+  cvtColor(blurred_source, gray_blurred_source, COLOR_BGR2GRAY);
+
+  imshow("2", gray_blurred_source);
+  
+  filter2D(gray_blurred_source, cannyX, CV_16S, verticalK);
+  filter2D(gray_blurred_source, cannyY, CV_16S, horizontalK);
 
   convertScaleAbs(cannyX, gradX);
   convertScaleAbs(cannyY, gradY);
-  addWeighted(gradX, 0.5, gradY, 0.5, 0, altered_image);
+  addWeighted(gradX, 0.5, gradY, 0.5, 0, canny_result);
+
+  imshow("3", canny_result);
+
+  imshow("gradX", gradX);
+  imshow("gradY", gradY);
+
+  cout << gradX;
+  //for (int y = 0; y < source.rows; y++){
+  //  for (int x = 0; x < source.cols; x++){
+  //    cout << gradX.at<double>(y, x) << endl;
+  //    angles.at<uchar>(y, x) = atan2(sum(gradX.at<uchar>(y, x))[0], sum(gradY.at<uchar>(y, x))[0]);
+  //  }
+  //}
+  
+  imshow("4", angles);
 
   altered_image = Scalar::all(0);
-  source.copyTo(altered_image, detected_edges);
+  gray_blurred_source.copyTo(altered_image, canny_result);
   return altered_image;
 }
