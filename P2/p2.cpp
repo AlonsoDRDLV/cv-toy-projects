@@ -157,8 +157,7 @@ Mat their_Canny(Mat source){
 }
 
 Mat our_Canny(Mat source){
-  Mat altered_image, cannyX, cannyY, gradX, gradY, blurred_source, gray_blurred_source, canny_result;
-  Mat angles(source.size(), source.type());
+  Mat altered_image, cannyX, angles, cannyY, gradX, gradY, blurred_source, gray_blurred_source, canny_result;
   Mat horizontalK = (Mat_<float>(3, 3) <<
     1, 2, 1,
     0, 0, 0,
@@ -188,15 +187,19 @@ Mat our_Canny(Mat source){
   imshow("gradX", gradX);
   imshow("gradY", gradY);
 
-  cout << gradX;
-  //for (int y = 0; y < source.rows; y++){
-  //  for (int x = 0; x < source.cols; x++){
-  //    cout << gradX.at<double>(y, x) << endl;
-  //    angles.at<uchar>(y, x) = atan2(sum(gradX.at<uchar>(y, x))[0], sum(gradY.at<uchar>(y, x))[0]);
-  //  }
-  //}
-  
-  imshow("4", angles);
+//  phase(gradX, gradY, angles); // En un mundo ideal donde las arcotangentes son fáciles esto funcionaría
+
+  angles = gradX.clone(); // PARA ASEGURAR QUE EL TIPO, TAMAÑO Y EL GRUPO SANGUÍNEO DE LA PUTA MATRIZ CONCUERDE (no es tarea fácil) C:
+
+  for (int y = 0; y < source.rows; y++){
+    for (int x = 0; x < source.cols; x++){
+      //cout << gradX.at<uchar>(y, x) << endl; //lo imprime fatal, obviamente fatal
+      //angles.at<uchar>(y, x) = atan2(gradX.at<uchar>(y, x), gradY.at<uchar>(y, x)); // No sé porqué da ceros, por eso existe el cout de encima y no sirve
+      //angles.at<uchar>(y, x) = y % 255; // ESTO FUNCIONA Y ME HA COSTADO HORRORES
+    }
+  }
+
+  imshow("4", angles); // Tendría que imprimir las direcciones (mirar wikipedia de operador canny, sería la imagen 4)
 
   altered_image = Scalar::all(0);
   gray_blurred_source.copyTo(altered_image, canny_result);
