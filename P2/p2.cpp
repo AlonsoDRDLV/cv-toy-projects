@@ -175,8 +175,8 @@ Mat our_Canny(Mat source){
 
   imshow("2", gray_blurred_source);
   
-  filter2D(gray_blurred_source, cannyX, CV_16S, verticalK);
-  filter2D(gray_blurred_source, cannyY, CV_16S, horizontalK);
+  filter2D(gray_blurred_source, cannyX, CV_32F, verticalK);
+  filter2D(gray_blurred_source, cannyY, CV_32F, horizontalK);
 
   convertScaleAbs(cannyX, gradX);
   convertScaleAbs(cannyY, gradY);
@@ -188,13 +188,24 @@ Mat our_Canny(Mat source){
   imshow("gradY", gradY);
 
 //  phase(gradX, gradY, angles); // En un mundo ideal donde las arcotangentes son fáciles esto funcionaría
+  gradX.convertTo(gradX, CV_32F);
+  gradY.convertTo(gradY, CV_32F);
+  angles = Mat(gradX.size(), gradX.type(), 0.0);
+  cout << gradX.rows << " " << gradX.cols << endl;
+  for (int y = 0; y < gradX.rows; y++){
+    float* punteroX = gradX.ptr<float>(y);
+    float* punteroY = gradY.ptr<float>(y);
+    float* punteroAngle = angles.ptr<float>(y);
+    for (int x = 0; x < gradX.cols; x++){
+      float pX = punteroX[x];
+      float pY = punteroY[x];
+      if (pY == 0){
+        punteroAngle[x] = 0;
+      }else{
+        punteroAngle[x] = atan2(pX, pY); // No sé porqué da ceros, por eso existe el cout de encima y no sirve
 
-  angles = gradX.clone(); // PARA ASEGURAR QUE EL TIPO, TAMAÑO Y EL GRUPO SANGUÍNEO DE LA PUTA MATRIZ CONCUERDE (no es tarea fácil) C:
-
-  for (int y = 0; y < source.rows; y++){
-    for (int x = 0; x < source.cols; x++){
+      }
       //cout << gradX.at<uchar>(y, x) << endl; //lo imprime fatal, obviamente fatal
-      //angles.at<uchar>(y, x) = atan2(gradX.at<uchar>(y, x), gradY.at<uchar>(y, x)); // No sé porqué da ceros, por eso existe el cout de encima y no sirve
       //angles.at<uchar>(y, x) = y % 255; // ESTO FUNCIONA Y ME HA COSTADO HORRORES
     }
   }
