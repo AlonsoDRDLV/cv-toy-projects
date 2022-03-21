@@ -240,14 +240,14 @@ Mat our_Canny(Mat source){
           theOtherSide = canny_result.ptr<float>(y - 1)[x + 1];
         }
       }else if ((angle >= 67.5) && (angle < 112.5)){
-        if ((x > 0) && (x < angles.cols) && (y > 0) && (y < angles.rows)){
-          oneSide = canny_result.ptr<float>(y)[x + 1];
-          theOtherSide = canny_result.ptr<float>(y)[x - 1];
+        if ((y > 0) && (y + 1 < angles.rows)){
+          oneSide = canny_result.ptr<float>(y + 1)[x];
+          theOtherSide = canny_result.ptr<float>(y - 1)[x];
         }
       }else if ((angle >= 112.5) && (angle < 157.5)){
-        if ((x > 0) && (x + 1 < angles.cols)){
-          oneSide = canny_result.ptr<float>(y)[x + 1];
-          theOtherSide = canny_result.ptr<float>(y)[x - 1];
+        if ((x > 0) && (x + 1 < angles.cols) && (y > 0) && (y + 1 < angles.rows)){
+          oneSide = canny_result.ptr<float>(y - 1)[x - 1];
+          theOtherSide = canny_result.ptr<float>(y + 1)[x + 1];
         }
       }
 
