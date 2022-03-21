@@ -157,7 +157,7 @@ Mat their_Canny(Mat source){
 }
 
 Mat our_Canny(Mat source){
-  Mat altered_image, cannyX, angles, cannyY, gradX, gradY, blurred_source, gray_blurred_source, canny_result;
+  Mat altered_image, cannyX, angles, cannyY, gradX, gradY, blurred_source, gray_blurred_source;
   Mat horizontalK = (Mat_<float>(3, 3) <<
     1, 2, 1,
     0, 0, 0,
@@ -180,6 +180,9 @@ Mat our_Canny(Mat source){
 
   convertScaleAbs(cannyX, gradX);
   convertScaleAbs(cannyY, gradY);
+  
+  Mat canny_result = Mat(gradX.size(), gradX.type(), 0.0);
+
   addWeighted(gradX, 0.5, gradY, 0.5, 0, canny_result);
 
   imshow("3", canny_result);
@@ -203,14 +206,62 @@ Mat our_Canny(Mat source){
         punteroAngle[x] = 0;
       }else{
         punteroAngle[x] = atan2(pX, pY); // No sé porqué da ceros, por eso existe el cout de encima y no sirve
-
       }
-      //cout << gradX.at<uchar>(y, x) << endl; //lo imprime fatal, obviamente fatal
-      //angles.at<uchar>(y, x) = y % 255; // ESTO FUNCIONA Y ME HA COSTADO HORRORES
     }
   }
 
   imshow("4", angles); // Tendría que imprimir las direcciones (mirar wikipedia de operador canny, sería la imagen 4)
+
+  // Non-max supression
+  Mat nonMaxSup = Mat(angles.size(), angles.type(), 0.0);
+  for (int y = 0; y < angles.rows; y++){
+    for (int x = 0; x < angles.cols; x++){
+      angles.ptr<float>(y)[x] = angles.ptr<float>(y)[x] * 180 / CV_PI;
+      if (angles.ptr<float>(y)[x] < 0){
+        angles.ptr<float>(y)[x] = angles.ptr<float>(y)[x] + 180;
+      }
+    }
+  }
+  float oneSide, theOtherSide;
+  for (int y = 0; y < angles.rows; y++){
+    //float* puntY = angles.ptr<float>(y);
+    for (int x = 0; x < angles.cols; x++){
+      oneSide = 255;
+      theOtherSide = 255;
+      float angle = angles.ptr<float>(y)[x];
+      if (((angle >= 0) && (angle < 22.5)) || ((angle >= 157.5) && (angle <= 180))){
+        if ((x > 0) && (x + 1 < angles.cols)){
+          oneSide = canny_result.ptr<float>(y)[x + 1];
+          theOtherSide = canny_result.ptr<float>(y)[x - 1];
+        }
+      }else if ((angle >= 22.5) && (angle < 67.5)){
+        if ((x > 0) && (x + 1 < angles.cols) && (y > 0) && (y + 1 < angles.rows)){
+          oneSide = canny_result.ptr<float>(y + 1)[x - 1];
+          theOtherSide = canny_result.ptr<float>(y - 1)[x + 1];
+        }
+      }else if ((angle >= 67.5) && (angle < 112.5)){
+        if ((x > 0) && (x < angles.cols) && (y > 0) && (y < angles.rows)){
+          oneSide = canny_result.ptr<float>(y)[x + 1];
+          theOtherSide = canny_result.ptr<float>(y)[x - 1];
+        }
+      }else if ((angle >= 112.5) && (angle < 157.5)){
+        if ((x > 0) && (x + 1 < angles.cols)){
+          oneSide = canny_result.ptr<float>(y)[x + 1];
+          theOtherSide = canny_result.ptr<float>(y)[x - 1];
+        }
+      }
+
+      float aux = canny_result.ptr<float>(y)[x];
+      if ((aux >= oneSide) && (aux >= theOtherSide)){
+        nonMaxSup.ptr<float>(y)[x] = aux;
+      }else{
+        nonMaxSup.ptr<float>(y)[x] = 0;
+      }
+    }
+  }
+
+  imshow("5", nonMaxSup);
+
 
   altered_image = Scalar::all(0);
   gray_blurred_source.copyTo(altered_image, canny_result);
