@@ -19,17 +19,18 @@ Mat hough(Mat image, int minThreshold, int maxThreshold);
 Mat gradX(Mat gray_blurred_image);
 Mat gradY(Mat gray_blurred_image);
 Mat angles(Mat gX, Mat gY);
+Mat grad_module(Mat gX, Mat gY);
 Mat their_Sobel(Mat source);
 Mat our_Sobel(Mat source);
 Mat their_Scharr(Mat source);
 Mat our_Scharr(Mat source);
 Mat their_Canny(Mat source);
-Mat our_Canny(Mat source);
+Mat our_Canny(Mat source, float minThreshold, float maxThreshold);
 
 
 int main(int argc, char** argv){
   Mat image, copy, altered_image, opencv_image;
-  std::string imageName = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P2\\pasillo2.pgm";
+  std::string imageName = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P2\\poster.pgm";
 
   image = imread(samples::findFile(imageName), IMREAD_COLOR);
   if(image.empty()){
@@ -37,70 +38,63 @@ int main(int argc, char** argv){
     return EXIT_FAILURE;
   }
 
-  altered_image = hough(image, 50, 200);
+  //altered_image = hough(image, 50, 250);
 
-  imshow("their", altered_image);
+  //imshow("their", altered_image);
 
 
   //copy = image.clone();
   //altered_image = their_Canny(image);
-  //opencv_image = our_Canny(copy);
+  opencv_image = our_Canny(image, 0.1, 0.3);
+
   
  /* imshow("orig", image);
-  imshow("pruebas", altered_image);
-  imshow("opencv", opencv_image);*/
+  imshow("pruebas", altered_image); */
+  //imshow("opencv", opencv_image);
 
   waitKey(0);
 
   return EXIT_SUCCESS;
 }
 
-Mat hough(Mat image, int minThreshold, int maxThreshold){
-  Mat blurred_image;
-  GaussianBlur(image, blurred_image, Size(5, 5), 0, 0, BORDER_DEFAULT);
-  Mat gray_blurred_image;
-  cvtColor(blurred_image, gray_blurred_image, COLOR_BGR2GRAY);
+std::vector<std::vector<double>> filter_lines(std::vector<Vec4i> lines){
+  std::vector<std::vector<double>> filtered_lines;
+  int x1, x2, y1, y2;
+
+  Vec4i line;
+  for (int i = 0; i < lines.size(); i++){
+    line = lines[i];
+    x1 = line[0];
+    y1 = line[1];
+    x2 = line[2];
+    y2 = line[3];
 
 
-  Mat gX = gradX(gray_blurred_image);
-  Mat gY = gradY(gray_blurred_image);
-
-  Mat ang = angles(gX, gY);
-
-  Mat canny_result;
-  Canny(gray_blurred_image, canny_result, minThreshold, maxThreshold, 3);
-
-  Mat canny_coloured;
-  cvtColor(canny_result, canny_coloured, COLOR_GRAY2BGR);
-
-  std::vector<Vec2f> lines;
-  HoughLines(canny_result, lines, 1, CV_PI / 180, maxThreshold - minThreshold, 0, 0);
-  for (size_t i = 0; i < lines.size(); i++){
-    float rho = lines[i][0], theta = lines[i][1];
-    Point pt1, pt2;
-    double a = cos(theta), b = sin(theta);
-    double x0 = a * rho, y0 = b * rho;
-    pt1.x = cvRound(x0 + 1000 * (-b));
-    pt1.y = cvRound(y0 + 1000 * (a));
-    pt2.x = cvRound(x0 - 1000 * (-b));
-    pt2.y = cvRound(y0 - 1000 * (a));
-    line(canny_coloured, pt1, pt2, Scalar(0, 0, 255), 3, LINE_AA);
   }
-  return canny_coloured;
   
+  return filtered_lines;
+}
+
+Mat hough(Mat source, int minThreshold, int maxThreshold){
+  Mat canny = our_Canny(source, minThreshold, maxThreshold);
+  std::vector<Vec4i> lines;
+  HoughLinesP(canny, lines, 1, CV_PI / 180, 50, 15);
+  std::vector<std::vector<double>> v = filter_lines(lines);
+
+  return canny;
 }
 
 Mat gradX(Mat gray_blurred_image){
   Mat source = gray_blurred_image.clone();
-  Mat cannyX, gradX;
+  Mat cannyX, gradX = Mat(source.size(), source.type());
   Mat verticalK = (Mat_<float>(3, 3) <<
     -1, 0, 1,
     -2, 0, 2,
     -1, 0, 1);
 
-  filter2D(source, cannyX, CV_32F, verticalK);
+  filter2D(source, gradX, CV_32F, verticalK);
 
-  convertScaleAbs(cannyX, gradX);
+ // convertScaleAbs(cannyX, gradX);
 
   return gradX;
 }
@@ -113,9 +107,9 @@ Mat gradY(Mat gray_blurred_image){
     0, 0, 0,
     -1, -2, -1);
 
-  filter2D(source, cannyY, CV_32F, horizontalK);
+  filter2D(source, gradY, CV_32F, horizontalK);
 
-  convertScaleAbs(cannyY, gradY);
+ // convertScaleAbs(cannyY, gradY);
 
   return gradY;
 }
@@ -128,13 +122,39 @@ Mat angles(Mat gX, Mat gY){
   gAuxY.convertTo(gAuxY, CV_32F);
   Mat ang = Mat(gAuxX.size(), CV_32F, 0.0);
 
-
   for(int y = 0; y < gAuxX.rows; y++){
     for(int x = 0; x < gAuxY.cols; x++){
        ang.at<float>(y, x) = atan2(gAuxX.at<float>(y, x), gAuxY.at<float>(y, x));
     }
   }
   return ang;
+}
+
+Mat grad_module(Mat gX, Mat gY){
+  Mat gAuxX = gX.clone();
+  gAuxX.convertTo(gAuxX, CV_32F);
+  pow(gAuxX, 2, gAuxX);
+  Mat gAuxY = gY.clone();
+  gAuxY.convertTo(gAuxY, CV_32F);
+  pow(gAuxY, 2, gAuxY);
+  Mat result = Mat(gX.size(), CV_32F);
+  result = gAuxY + gAuxX;
+  sqrt(result, result);
+  float min = result.at<float>(0, 0);
+  float max = result.at<float>(0, 0);
+  for (int y = 0; y < result.rows; y++){
+    for (int x = 0; x < result.cols; x++){
+      if(result.at<float>(y, x) < min){
+        min = result.at<float>(y, x);
+      }
+      if(result.at<float>(y, x) > max){
+        max = result.at<float>(y, x);
+      }
+    }
+  }
+  result = (result - min) / (max - min);
+  //cout << result << endl;
+  return result;
 }
 
 Mat their_Sobel(Mat source){
@@ -228,8 +248,8 @@ Mat their_Canny(Mat source){
   return altered_image;
 }
 
-Mat our_Canny(Mat source){
-  Mat altered_image, cannyX, angles, cannyY, gradX, gradY, blurred_source, gray_blurred_source;
+Mat our_Canny(Mat source, float minThreshold, float maxThreshold){
+  Mat altered_image, cannyXE, cannyY, gX, gY, blurred_source, gray_blurred_source;
   Mat horizontalK = (Mat_<float>(3, 3) <<
     1, 2, 1,
     0, 0, 0,
@@ -238,95 +258,104 @@ Mat our_Canny(Mat source){
     -1, 0, 1,
     -2, 0, 2,
     -1, 0, 1);
-    
-  imshow("1", source);
+  imshow("source", source);
 
   GaussianBlur(source, blurred_source, Size(5, 5), 0, 0, BORDER_DEFAULT);
-
   cvtColor(blurred_source, gray_blurred_source, COLOR_BGR2GRAY);
+  imshow("blurred gray", gray_blurred_source);
 
-  imshow("2", gray_blurred_source);
-  
-  filter2D(gray_blurred_source, cannyX, CV_32F, verticalK);
-  filter2D(gray_blurred_source, cannyY, CV_32F, horizontalK);
+  gX = gradX(gray_blurred_source);
+  gY = gradY(gray_blurred_source);
+  imshow("gradX", gX);
+  imshow("gradY", gY);
 
-  convertScaleAbs(cannyX, gradX);
-  convertScaleAbs(cannyY, gradY);
-  
-  Mat canny_result = Mat(gradX.size(), gradX.type(), 0.0);
+  Mat canny_module = Mat(gX.size(), gX.type());
+  canny_module = grad_module(gX, gY);
+  imshow("grad module", canny_module);
 
-  addWeighted(gradX, 0.5, gradY, 0.5, 0, canny_result);
+  Mat ang = Mat(gX.size(), gX.type());
+  ang = angles(gX, gY);
 
-  imshow("3", canny_result);
+  //cartToPolar(gX, gY, canny_module, ang);
+  imshow("angles", ang);
 
-  imshow("gradX", gradX);
-  imshow("gradY", gradY);
-
-//  phase(gradX, gradY, angles); // En un mundo ideal donde las arcotangentes son fáciles esto funcionaría
-  gradX.convertTo(gradX, CV_32F);
-  gradY.convertTo(gradY, CV_32F);
-  angles = Mat(gradX.size(), gradX.type(), 0.0);
-  cout << gradX.rows << " " << gradX.cols << endl;
-  for (int y = 0; y < gradX.rows; y++){
-    float* punteroX = gradX.ptr<float>(y);
-    float* punteroY = gradY.ptr<float>(y);
-    float* punteroAngle = angles.ptr<float>(y);
-    for (int x = 0; x < gradX.cols; x++){
-      float pX = punteroX[x];
-      float pY = punteroY[x];
-      if (pY == 0){
-        punteroAngle[x] = 0;
-      }else{
-        punteroAngle[x] = atan2(pX, pY); // No sé porqué da ceros, por eso existe el cout de encima y no sirve
-      }
-    }
-  }
-
-  imshow("4", angles); // Tendría que imprimir las direcciones (mirar wikipedia de operador canny, sería la imagen 4)
-
-  canny_result.convertTo(canny_result, CV_32F);
   // Non-max supression
-  Mat nonMaxSup = Mat(angles.size(), angles.type(), 0.0);
-  for (int y = 0; y < angles.rows; y++){
-    for (int x = 0; x < angles.cols; x++){
-      angles.ptr<float>(y)[x] = angles.ptr<float>(y)[x] * 180 / CV_PI;
-      if (angles.ptr<float>(y)[x] < 0){
-        angles.ptr<float>(y)[x] = angles.ptr<float>(y)[x] + 180;
+  Mat nonMaxSup = Mat(ang.size(), ang.type(), 0.0);
+  for (int y = 0; y < ang.rows; y++){
+    for (int x = 0; x < ang.cols; x++){
+      ang.at<float>(y, x) = ang.at<float>(y, x) * 180 / CV_PI;
+      if (ang.at<float>(y, x) < 0){
+        ang.at<float>(y, x) = ang.at<float>(y, x) + 180;
       }
     }
   }
+  // cout << ang << endl;
+
   float oneSide, theOtherSide;
-  for (int y = 1; y < angles.rows - 1; y++){
-    //float* puntY = angles.ptr<float>(y);
-    for (int x = 1; x < angles.cols - 1; x++){
+  for (int y = 1; y < ang.rows - 1; y++){
+    for (int x = 1; x < ang.cols - 1; x++){
       oneSide = 255;
       theOtherSide = 255;
-      float angle = angles.ptr<float>(y)[x];
+      float angle = ang.at<float>(y, x);
       if (((angle >= 0) && (angle < 22.5)) || ((angle >= 157.5) && (angle <= 180))){
-        oneSide = canny_result.ptr<float>(y)[x + 1];
-        theOtherSide = canny_result.ptr<float>(y)[x - 1];
+        oneSide = canny_module.at<float>(y + 1, x);
+        theOtherSide = canny_module.at<float>(y - 1, x);
       }else if ((angle >= 22.5) && (angle < 67.5)){
-        oneSide = canny_result.ptr<float>(y + 1)[x - 1];
-        theOtherSide = canny_result.ptr<float>(y - 1)[x + 1];
+        oneSide = canny_module.at<float>(y + 1, x - 1);
+        theOtherSide = canny_module.at<float>(y - 1, x + 1);
       }else if ((angle >= 67.5) && (angle < 112.5)){
-        oneSide = canny_result.ptr<float>(y + 1)[x];
-        theOtherSide = canny_result.ptr<float>(y - 1)[x];
+        oneSide = canny_module.at<float>(y, x + 1);
+        theOtherSide = canny_module.at<float>(y, x - 1);
       }else if ((angle >= 112.5) && (angle < 157.5)){
-        oneSide = canny_result.ptr<float>(y - 1)[x - 1];
-        theOtherSide = canny_result.ptr<float>(y + 1)[x + 1];
+        oneSide = canny_module.at<float>(y - 1, x - 1);
+        theOtherSide = canny_module.at<float>(y + 1, x + 1);
       }
 
-      float aux = canny_result.ptr<float>(y)[x];
+      float aux = canny_module.at<float>(y, x);
       if ((aux >= oneSide) && (aux >= theOtherSide)){
-        nonMaxSup.ptr<float>(y)[x] = aux;
+        nonMaxSup.at<float>(y, x) = aux;
       }
     }
   }
-  //cout << nonMaxSup << endl;
 
-  nonMaxSup.convertTo(nonMaxSup, CV_8U);
+  imshow("nonMaxSup", nonMaxSup);
 
-  imshow("5", nonMaxSup);
+  Mat withThreshold = Mat(nonMaxSup.size(), nonMaxSup.type());
+  // Muchos podrían haber caído llegados a este punto; nosotros, no
+  for (int y = 0; y < nonMaxSup.rows; y++){
+    for (int x = 0; x < nonMaxSup.cols; x++){
+      if (nonMaxSup.at<float>(y, x) < minThreshold){
+        withThreshold.at<float>(y, x) = 0.0f;
+      }else if(nonMaxSup.at<float>(y, x) < maxThreshold){
+        withThreshold.at<float>(y, x) = 0.3f;
+      }else{
+        withThreshold.at<float>(y, x) = 1.0f;
+      }
+    }
+  }
 
-  return altered_image;
+  imshow("with threshold", withThreshold);
+
+  Mat hysteresis = withThreshold.clone();
+  for(int y = 1; y < hysteresis.rows - 1; y++){
+    for(int x = 1; x < hysteresis.cols - 1; x++){
+      if (hysteresis.at<float>(y, x) == 0.3f){
+        if ((withThreshold.at<float>(y - 1, x) == 1.0f) ||
+            (withThreshold.at<float>(y - 1, x - 1) == 1.0f) || 
+            (withThreshold.at<float>(y, x - 1) == 1.0f) || 
+            (withThreshold.at<float>(y + 1, x - 1) == 1.0f) || 
+            (withThreshold.at<float>(y + 1, x) == 1.0f) || 
+            (withThreshold.at<float>(y + 1, x + 1) == 1.0f) || 
+            (withThreshold.at<float>(y, x + 1) == 1.0f) || 
+            (withThreshold.at<float>(y - 1, x + 1) == 1.0f)){
+          hysteresis.at<float>(y, x) = 1.0f;
+        }else{
+          hysteresis.at<float>(y, x) = 0.0f;
+        }
+      }
+    }
+  }
+
+  imshow("hysteresis", hysteresis);
+  return hysteresis;
 }
