@@ -47,7 +47,7 @@ int main(int argc, char** argv){
   //altered_image = their_Canny(image);
   opencv_image = our_Canny(image, 0.1, 0.3);
 
-  
+
  /* imshow("orig", image);
   imshow("pruebas", altered_image); */
   //imshow("opencv", opencv_image);
@@ -71,7 +71,7 @@ std::vector<std::vector<double>> filter_lines(std::vector<Vec4i> lines){
 
 
   }
-  
+
   return filtered_lines;
 }
 
@@ -160,7 +160,7 @@ Mat grad_module(Mat gX, Mat gY){
 Mat their_Sobel(Mat source){
   Mat altered_image, scharrX, scharrY, gradX, gradY, blurred_source, gray_blurred_source;
   GaussianBlur(source, blurred_source, Size(3, 3), 0, 0, BORDER_DEFAULT);
-  
+
   cvtColor(blurred_source, gray_blurred_source, COLOR_BGR2GRAY);
 
   Sobel(gray_blurred_source, scharrX, CV_16S, 1, 0, 3, 1, 0, BORDER_DEFAULT);
@@ -321,7 +321,7 @@ Mat our_Canny(Mat source, float minThreshold, float maxThreshold){
   imshow("nonMaxSup", nonMaxSup);
 
   Mat withThreshold = Mat(nonMaxSup.size(), nonMaxSup.type());
-  // Muchos podrían haber caído llegados a este punto; nosotros, no
+  // Muchos podrï¿½an haber caï¿½do llegados a este punto; nosotros, no
   for (int y = 0; y < nonMaxSup.rows; y++){
     for (int x = 0; x < nonMaxSup.cols; x++){
       if (nonMaxSup.at<float>(y, x) < minThreshold){
@@ -341,12 +341,12 @@ Mat our_Canny(Mat source, float minThreshold, float maxThreshold){
     for(int x = 1; x < hysteresis.cols - 1; x++){
       if (hysteresis.at<float>(y, x) == 0.3f){
         if ((withThreshold.at<float>(y - 1, x) == 1.0f) ||
-            (withThreshold.at<float>(y - 1, x - 1) == 1.0f) || 
-            (withThreshold.at<float>(y, x - 1) == 1.0f) || 
-            (withThreshold.at<float>(y + 1, x - 1) == 1.0f) || 
-            (withThreshold.at<float>(y + 1, x) == 1.0f) || 
-            (withThreshold.at<float>(y + 1, x + 1) == 1.0f) || 
-            (withThreshold.at<float>(y, x + 1) == 1.0f) || 
+            (withThreshold.at<float>(y - 1, x - 1) == 1.0f) ||
+            (withThreshold.at<float>(y, x - 1) == 1.0f) ||
+            (withThreshold.at<float>(y + 1, x - 1) == 1.0f) ||
+            (withThreshold.at<float>(y + 1, x) == 1.0f) ||
+            (withThreshold.at<float>(y + 1, x + 1) == 1.0f) ||
+            (withThreshold.at<float>(y, x + 1) == 1.0f) ||
             (withThreshold.at<float>(y - 1, x + 1) == 1.0f)){
           hysteresis.at<float>(y, x) = 1.0f;
         }else{
@@ -358,4 +358,15 @@ Mat our_Canny(Mat source, float minThreshold, float maxThreshold){
 
   imshow("hysteresis", hysteresis);
   return hysteresis;
+}
+
+Mat vanish_point(Mat source) {
+  for (int y = 0; y < ang.rows; y++) {
+    for (int x = 0; x < ang.cols; x++) {
+      ang.at<float>(y, x) = ang.at<float>(y, x) * 180 / CV_PI;
+      if (ang.at<float>(y, x) < 0) {
+        ang.at<float>(y, x) = ang.at<float>(y, x) + 180;
+      }
+    }
+  }
 }
