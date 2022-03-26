@@ -27,15 +27,17 @@ Mat their_Scharr(Mat source);
 Mat our_Scharr(Mat source, Mat& grad_ang, Mat& grad_mod, int sigma);
 Mat their_Canny(Mat source);
 Mat our_Canny(Mat source, Mat& grad_ang, Mat& grad_mod, float minThreshold, float maxThreshold, int sigma);
-int vanish_point(const Mat& source, Mat& grad_mod, Mat& grad_ang);
+int vanish_point(const Mat& source, Mat& grad_ang, double module_threshold,
+  double vertical_threshold, double horizontal_threshold);
 Mat drawCross(const Mat& source, int location);
 
 int main(int argc, char** argv) {
   Mat image, copy, altered_image, opencv_image, grad_mod, grad_angle;
-  int op = 0, vanishing_point_loc;
-  float threshold_hough = 0.21;
+  int op = 0, vanishing_point_loc, sigma;
+  double module_threshold = 0.8, horizontal_threshold = 0.7, vertical_threshold = 0.3,
+    canny_theshold_1 = 0.05, canny_theshold_2 = 0.1;
 
-  std::string imageName = "C:\\Users\\AlonsoDRDLV\\Documents\\GitHub\\super-duper-system\\P2\\pasillo2.pgm";
+  std::string imageName = "C:\\Users\\AlonsoDRDLV\\Documents\\GitHub\\super-duper-system\\P2\\pasillo3.pgm";
 
   image = imread(samples::findFile(imageName), IMREAD_COLOR);
   if (image.empty()) {
@@ -45,7 +47,8 @@ int main(int argc, char** argv) {
 
   cout << "Selecciona el operador:\n 1. Scharr\n 2. Sobel\n 3. Canny" << endl;
   cin >> op;
-
+  cout << endl << "Selecciona el valor de sigma:" << endl;
+  cin >> sigma;
   //imshow("their", altered_image);
 
 
@@ -53,60 +56,41 @@ int main(int argc, char** argv) {
   //altered_image = their_Canny(image);
   switch (op) {
   case 1:
-    altered_image = our_Scharr(image, grad_angle, grad_mod, 3);
+    altered_image = our_Scharr(image, grad_angle, grad_mod, sigma);
     break;
   case 2:
 
-    altered_image = our_Sobel(image, grad_angle, grad_mod, 3);
+    altered_image = our_Sobel(image, grad_angle, grad_mod, sigma);
     break;
   case 3:
-    altered_image = our_Canny(image, grad_angle, grad_mod, 0.1, 0.3, 5);
+    cout << endl << "Selecciona el del threshold 1:" << endl;
+    cin >> canny_theshold_1;
+    cout << endl << "Selecciona el del threshold 2:" << endl;
+    cin >> canny_theshold_2;
+
+    altered_image = our_Canny(image, grad_angle, grad_mod, canny_theshold_1, canny_theshold_2, sigma);
     //altered_image = their_Canny(image);
+
+    cout << endl << "Define el threshold del módulo del gradiente para la traspuesta de Hough" << endl;
+    cin >> module_threshold;
+    cout << endl << "Define el rango de valores del coseno del angulo del gradiente que se tiene en cuenta: \n limite inferior (filtrado de verticales):" << endl;
+    cin >> vertical_threshold;
+    cout << endl << "Limite superior (filtrado de horizontales):" << endl;
+    cin >> horizontal_threshold;
+
+    vanishing_point_loc = vanish_point(altered_image, grad_angle, module_threshold
+      , vertical_threshold, horizontal_threshold);
+
+    drawCross(copy, vanishing_point_loc);
+
+    imshow("pruebas", copy);
+
     break;
   default:
     cout << "Opcion no definida" << endl;
     return 1;
   }
 
-  //Si Sobel o Scharr no estamos haciendo thresholding, lo hacemos antes de Hough
-  if (op < 3) {
-    for (int y = 0; y < grad_mod.rows; y++) {
-      for (int x = 0; x < grad_mod.cols; x++) {
-        if (grad_mod.at<float>(y, x) < threshold_hough) {
-          altered_image.at<uchar>(y, x) = 0;
-        }
-      }
-    }
-  }
-  imshow("altered main", altered_image);
-  vanishing_point_loc = vanish_point(altered_image, grad_mod, grad_angle);
-
-  drawCross(copy, vanishing_point_loc);
-
-  /*altered_image.convertTo(altered_image, CV_8UC1);
-  // Standard Hough Line Transform
-  std::vector<Vec2f> lines; // will hold the results of the detection
-  HoughLines(altered_image, lines, 1, CV_PI / 180, 50, 0, 0); // runs the actual detection
-  // Draw the lines
-  for (size_t i = 0; i < lines.size(); i++)
-  {
-    float rho = lines[i][0], theta = lines[i][1];
-    Point pt1, pt2;
-    double a = cos(theta), b = sin(theta);
-    double x0 = a * rho, y0 = b * rho;
-    pt1.x = cvRound(x0 + 1000 * (-b));
-    pt1.y = cvRound(y0 + 1000 * (a));
-    pt2.x = cvRound(x0 - 1000 * (-b));
-    pt2.y = cvRound(y0 - 1000 * (a));
-    line(copy, pt1, pt2, Scalar(0, 0, 255), 3, LINE_AA);
-  }
-  */
-  imshow("pruebas", copy);
-
-  //imshow("pruebas", grad_mod);
-  /* imshow("orig", image);
-   imshow("pruebas", altered_image); */
-   //imshow("opencv", opencv_image);
 
   waitKey(0);
 
@@ -433,21 +417,30 @@ Mat our_Canny(Mat source, Mat& ang, Mat& canny_module, float minThreshold, float
 }
 
 //busca el punto de fuga en la horizontal aplicando la trasformade de Hough
-int vanish_point(const Mat& source, Mat& grad_mod, Mat& grad_ang) {
+int vanish_point(const Mat& source, Mat& grad_ang, double module_threshold,
+  double vertical_threshold, double horizontal_threshold) {
+
   double rho, theta;
   int x, y, intersection;
   std::vector<int> candidates(source.cols, 0); //pasillo2 tiene 500 algo pixeles de ancho,
                                                 //si resulta ser demasiado costoso podríamos clusterizar en
                                                 //conjuntos de varios pixeles
-  for (int i = 0; i < source.rows; i++) {
-    for (int j = 0; j < source.cols; j++) {
-      if(grad_mod.at<float>(i, j) > 0){ //solo los edgels votan
+  Mat copy = source.clone();
+  cvtColor(copy, copy, COLOR_GRAY2BGR);
 
-        theta = grad_ang.at<float>(i, j); //para mas eficiencia votamos de entre las lineas que pasan por el punto
+  for (int i = 0; i < source.cols; i++) {
+    for (int j = 0; j < source.rows; j++) {
+      if(source.at<float>(j, i) > module_threshold){ //threshold
+        //cout << i << " " << j << endl;
+        theta = grad_ang.at<float>(j, i); //para mas eficiencia votamos de entre las lineas que pasan por el punto
                                           //las lineas en la dirección del gradiente
-        if (abs(cos(theta)) < 0.9 and abs(cos(theta)) > 0.1) { //nos libramos de horizonteles y verticales
-          x = j - source.cols / 2;
-          y = source.rows / 2 - i;
+        //nos libramos de horizonteles y verticales
+        if ((abs(cos(theta)) > vertical_threshold) &&
+          (abs(cos(theta)) < horizontal_threshold)) {
+
+          line(copy, Point(i, j), Point(i, j), Scalar(0, 0, 255), 1, LINE_AA);
+          x = j - source.rows / 2;
+          y = source.cols / 2 - i;
           rho = x * cos(theta) + y * sin(theta);  //ecuación de la recta
 
           //no nos interesa detectar que lineas son más votadas (cuales son las lineas reales de la imagen)
@@ -468,8 +461,9 @@ int vanish_point(const Mat& source, Mat& grad_mod, Mat& grad_ang) {
       max_i = i;
     }
   }
-  cout << max_i << " " << max << endl;
-  for(int i : candidates) cout << " " << i << " ";
+  imshow("copia", copy);
+  //cout << max_i << " " << max << endl;
+  //for(int i : candidates) cout << " " << i << " ";
   return max_i;
 }
 
