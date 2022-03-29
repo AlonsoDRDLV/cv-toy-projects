@@ -5,7 +5,9 @@
 #include "opencv2/imgproc.hpp"
 #include <iostream>
 #include <string>
+#include <fstream>
 #include <iomanip>
+#include <vector>
 //#include <cmath>
 
 #define CVUI_IMPLEMENTATION
@@ -26,6 +28,37 @@ Mat adapt_mean_threshold(Mat image, int blur_size, int threshold_type, int block
 Mat otsu_threshold(Mat image, int gauss_size);
 
 int main(int argc, char** argv){
+  //if (argc != 3){ // Check parameters
+  //  cout << "Incorrect number of parameters, usage:\n";
+  //  cout << "aprender nomfich nomobj\n";
+  //  exit(1);
+  //}
+
+  //// Parameters reading
+  //string nom_fich = argv[1];
+  //string nom_obj = argv[2];
+  
+  string imagePath = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
+  string nom_fich = imagePath + "circulo1.pgm";
+
+  // File reading
+  Mat image = imread(samples::findFile(nom_fich), IMREAD_COLOR);
+  if(image.empty()){
+    printf("Error opening image: %s\n", nom_fich.c_str());
+    return EXIT_FAILURE;
+  }
+  imshow("Image to learn", image);
+  
+  Mat otsu = otsu_threshold(image, 5);
+
+  imshow("Image otsurized", otsu);
+
+
+  waitKey(0);
+
+  return EXIT_SUCCESS;
+}
+  /*
   Mat image, copy, altered_image, opencv_image;
   string imagePath = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
   string imageName = imagePath + "reco1.pgm";
@@ -62,7 +95,7 @@ int main(int argc, char** argv){
 
   // Saca la línea azul esa fea a la izquierda, tengo que ver cómo retirarla
   Mat labelImage(otsu.size(), CV_32S);
-  int nLabels = connectedComponents(otsu, labelImage, 8);
+  int nLabels = connectedComponents(otsu, labelImage, 4);
   vector<Vec3b> colors(nLabels);
   colors[0] = Vec3b(0, 0, 0);//background
   
@@ -91,15 +124,23 @@ int main(int argc, char** argv){
   vector<vector<Point>> contours;
   findContours(canny, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
 
-  // live the past, forget the moment, o algo así
-  vector<Moments> mu(contours.size());
+  // Descartamos basurilla
+  vector<vector<Point>> nice_contours;
   for(size_t i = 0; i < contours.size(); i++){
-    mu[i] = moments(contours[i]);
+    if ((contourArea(contours[i]) > 100) && (arcLength(contours[i], true) > 100)){
+      nice_contours.push_back(contours[i]);
+    }
+  }
+
+  // live the past, forget the moment, o algo así
+  vector<Moments> mu(nice_contours.size());
+  for(size_t i = 0; i < nice_contours.size(); i++){
+    mu[i] = moments(nice_contours[i]);
   }
 
   // Me ha costado pero esto es los moment center
-  vector<Point2f> mc(contours.size());
-  for(size_t i = 0; i < contours.size(); i++){
+  vector<Point2f> mc(nice_contours.size());
+  for(size_t i = 0; i < nice_contours.size(); i++){
     //add 1e-5 to avoid division by zero
     mc[i] = Point2f(static_cast<float>(mu[i].m10 / (mu[i].m00 + 1e-5)),
         static_cast<float>(mu[i].m01 / (mu[i].m00 + 1e-5)));
@@ -108,25 +149,25 @@ int main(int argc, char** argv){
   
   // las dibujaciones
   Mat drawing = Mat::zeros(canny.size(), CV_8UC3);
-  for(size_t i = 0; i < contours.size(); i++){
+  for(size_t i = 0; i < nice_contours.size(); i++){
     Scalar color = Scalar(rand() & 255, rand() & 255, rand() & 255);
-    drawContours(drawing, contours, (int)i, color, 2);
+    drawContours(drawing, nice_contours, (int)i, color, 2);
     circle(drawing, mc[i], 4, color, -1);
   }
 
   // las imprimiciones
   imshow("Contours", drawing);
   cout << "\t Info: Area and Contour Length \n";
-  for(size_t i = 0; i < contours.size(); i++){
+  for(size_t i = 0; i < nice_contours.size(); i++){
     cout << " * Contour[" << i << "] - Area (M_00) = " << std::fixed << std::setprecision(2) << mu[i].m00
-        << " - Area OpenCV: " << contourArea(contours[i]) << " - Length: " << arcLength(contours[i], true) << endl;
+        << " - Area OpenCV: " << contourArea(nice_contours[i]) << " - Length: " << arcLength(nice_contours[i], true) << endl;
   }
 
   waitKey(0);
 
   return EXIT_SUCCESS;
 }
-
+*/
 Mat adapt_gauss_threshold(Mat image, int blur_size, int threshold_type, int block_size, 
     double c){
   Mat result = image.clone();
