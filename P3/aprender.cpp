@@ -10,9 +10,6 @@
 #include <vector>
 //#include <cmath>
 
-#define CVUI_IMPLEMENTATION
-#include "cvui.h"
-
 using std::to_string;
 using std::string;
 using std::vector;
@@ -43,7 +40,7 @@ int main(int argc, char** argv){
 
   // File reading
   Mat image = imread(samples::findFile(nom_fich), IMREAD_COLOR);
-  if(image.empty()){
+  if (image.empty()){
     printf("Error opening image: %s\n", nom_fich.c_str());
     return EXIT_FAILURE;
   }
@@ -52,6 +49,32 @@ int main(int argc, char** argv){
   Mat otsu = otsu_threshold(image, 5);
 
   imshow("Image otsurized", otsu);
+
+  Mat canny;
+  Canny(otsu, canny, 100, 200);
+  vector<vector<Point>> contours;
+  findContours(canny, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
+
+  // Descarta basura
+  float maxArea = 0;
+  float aux;
+  int theBiggest = 0;
+  for (int i = 0; i < contours.size(); i++){
+    aux = contourArea(contours[i]);
+    if (aux > maxArea){
+      theBiggest = i;
+      maxArea = aux;
+    }
+  }
+
+  Moments mu = moments(contours[theBiggest]); // Los momentos
+  float area = maxArea;
+  float perim = arcLength(contours[theBiggest], true);
+
+  // SEGUIR DESDE AQUI
+
+
+
 
 
   waitKey(0);
