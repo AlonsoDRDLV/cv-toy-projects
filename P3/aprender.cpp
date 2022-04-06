@@ -24,16 +24,21 @@ Mat adapt_mean_threshold(Mat image, int blur_size, int threshold_type, int block
     double c);
 Mat otsu_threshold(Mat image, int gauss_size);
 
+//Formato del fichero de aprendizaje:
+//<nombre_de_la_figura>;<media1>,<varianza1>;<media2>,<varianza2>;<media3>,<varianza3>;<media4>,<varianza4>;<media5>,<varianza5>
+//<nombre_de_la_figura2>;...
+//...
+// Siendo 1) area 2) perimetro 3) momento1 4) momento2 5) momento3
 int main(int argc, char** argv){
-  //if (argc != 3){ // Check parameters
-  //  cout << "Incorrect number of parameters, usage:\n";
-  //  cout << "aprender nomfich nomobj\n";
-  //  exit(1);
-  //}
+  if (argc != 3){ // Check parameters
+    cout << "Wrong number of parameters, usage:\n";
+    cout << "aprender <nomfich> <nomobj>\n";
+    exit(1);
+  }
 
-  //// Parameters reading
-  //string nom_fich = argv[1];
-  //string nom_obj = argv[2];
+  // Parameters reading
+  string nom_fich = argv[1];
+  string nom_obj = argv[2];
   
   string imagePath = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
   string nom_fich = imagePath + "circulo1.pgm";
@@ -71,7 +76,14 @@ int main(int argc, char** argv){
   float area = maxArea;
   float perim = arcLength(contours[theBiggest], true);
 
+  std::ifstream 
+  while(){
+  }
+
   // SEGUIR DESDE AQUI
+  //float media = muestras / nMuestras;
+  //float varianza = sum(pow((muestra - media), 2)) / (nMuestras);
+
 
 
 
