@@ -18,6 +18,13 @@ using std::cout;
 using std::endl;
 using namespace cv;
 
+const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
+const string DATA_NAME = "objetos.txt";
+const int BUFF_LENGTH = 1024;
+const int NUM_DESCRIPTORS = 5;
+const int NUM_FIELDS = NUM_DESCRIPTORS * 2 + 2;
+const int MIN_LENGTH_LINE = NUM_FIELDS;
+
 Mat adapt_gauss_threshold(Mat image, int blur_size, int threshold_type, int block_size, 
     double c);
 Mat adapt_mean_threshold(Mat image, int blur_size, int threshold_type, int block_size,
@@ -25,7 +32,7 @@ Mat adapt_mean_threshold(Mat image, int blur_size, int threshold_type, int block
 Mat otsu_threshold(Mat image, int gauss_size);
 
 //Formato del fichero de aprendizaje:
-//<nombre_de_la_figura>;<media1>,<varianza1>;<media2>,<varianza2>;<media3>,<varianza3>;<media4>,<varianza4>;<media5>,<varianza5>
+//<nombre_de_la_figura>;<n>;<media1>;<varianza1>;<media2>;<varianza2>;<media3>;<varianza3>;<media4>;<varianza4>;<media5>;<varianza5>
 //<nombre_de_la_figura2>;...
 //...
 // Siendo 1) area 2) perimetro 3) momento1 4) momento2 5) momento3
@@ -37,16 +44,15 @@ int main(int argc, char** argv){
   }
 
   // Parameters reading
-  string nom_fich = argv[1];
-  string nom_obj = argv[2];
+  string fich_name = argv[1];
+  string obj_name = argv[2];
   
-  string imagePath = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
-  string nom_fich = imagePath + "circulo1.pgm";
+  fich_name = PATH + "circulo1.pgm";
 
   // File reading
-  Mat image = imread(samples::findFile(nom_fich), IMREAD_COLOR);
+  Mat image = imread(samples::findFile(fich_name), IMREAD_COLOR);
   if (image.empty()){
-    printf("Error opening image: %s\n", nom_fich.c_str());
+    printf("Error opening image: %s\n", fich_name.c_str());
     return EXIT_FAILURE;
   }
   imshow("Image to learn", image);
@@ -76,18 +82,67 @@ int main(int argc, char** argv){
   float area = maxArea;
   float perim = arcLength(contours[theBiggest], true);
 
-  std::ifstream 
-  while(){
+  std::ifstream objects(PATH + DATA_NAME);
+
+  // Lee datos
+  char* buffer = new char[BUFF_LENGTH];
+  string buffer_s;
+  int readedCount;
+  if (objects.is_open()){ // Existen datos anteriores
+    do{
+      objects.read(buffer, BUFF_LENGTH);
+      readedCount = objects.gcount();
+      buffer_s = buffer_s + string(buffer).substr(0, readedCount);
+    }while(readedCount == BUFF_LENGTH);
+  }else{ // Primer objeto aprendido
+    cout << "No existe objetos.txt, creando uno nuevo\n";
+    std::ofstream s(PATH + DATA_NAME);
+    s.close();
   }
 
+  // Los divide en lineas
+  int pos = buffer_s.find("\n");
+  vector<string> lines;
+  while (pos != string::npos){
+    if (pos > MIN_LENGTH_LINE){
+      lines.push_back(buffer_s.substr(0, pos));
+    }
+    buffer_s.erase(0, pos + 1);
+    pos = buffer_s.find("\n");
+  }
+  //cout << lineas.size() << endl;
+  //for (int i = 0; i < lineas.size(); i++){
+  //  cout << lineas[i] << endl;
+  //}
+
+  // Encuentra la clase afectada, o no!
+  int required = -1;
+  for (int i = 0; i < lines.size(); i++){
+    pos = lines[i].find(";");
+    if (lines[i].substr(0, pos) == obj_name){ // Encontrado
+      required = i;
+      break;
+    }
+  }
+
+  if (required != -1){ // No encontrado, creamos nuevo
+    required = lines.size();
+    lines.push_back(obj_name + ";0;0;0;0;0;0;0;0;0;0;0");
+  }
+
+  // Lee datos de la clase afectada
+  string required_Class = lines[required];
+  lines.erase(lines.begin() + required);
+  pos = required_Class.find(";");
+  required_Class.erase(0, pos + 1);
+  double data[11];
+  //for (int i = 0; i < NUM_FIELDS; i++){
+  //  data[i] = 
+  //}
+  
   // SEGUIR DESDE AQUI
   //float media = muestras / nMuestras;
   //float varianza = sum(pow((muestra - media), 2)) / (nMuestras);
-
-
-
-
-
 
   waitKey(0);
 
