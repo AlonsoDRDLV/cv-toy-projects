@@ -55,41 +55,46 @@ int main(int argc, char** argv){
   char* buffer = new char[BUFF_LENGTH];
   string buffer_s;
   int readedCount;
+  double data[NUM_FIELDS];
+  vector<string> lines;
+  int pos;
+
   if (objects.is_open()){ // Existen datos anteriores
     do{
       objects.read(buffer, BUFF_LENGTH);
       readedCount = objects.gcount();
       buffer_s = buffer_s + string(buffer).substr(0, readedCount);
     }while(readedCount == BUFF_LENGTH);
+    // Los divide en lineas
+    pos = buffer_s.find("\n");
+    while(pos != string::npos){
+      if(pos > MIN_LENGTH_LINE){
+        lines.push_back(buffer_s.substr(0, pos));
+      }
+      buffer_s.erase(0, pos + 1);
+      pos = buffer_s.find("\n");
+    }
+
   }else{ // Primer objeto aprendido
     cout << "No existe objetos.txt, creando uno nuevo\n";
     std::ofstream s(PATH + DATA_NAME);
     s.close();
-    objects = std::ifstream(PATH + DATA_NAME);
+    data[0] = 0;
   }
+  objects.close();
 
-  // Los divide en lineas
-  int pos = buffer_s.find("\n");
-  vector<string> lines;
-  while (pos != string::npos){
-    if (pos > MIN_LENGTH_LINE){
-      lines.push_back(buffer_s.substr(0, pos));
-    }
-    buffer_s.erase(0, pos + 1);
-    pos = buffer_s.find("\n");
-  }
 
   // Encuentra la clase afectada, o no!
   int required = -1;
-  for (int i = 0; i < lines.size(); i++){
+  for(int i = 0; i < lines.size(); i++){
     pos = lines[i].find(";");
-    if (lines[i].substr(0, pos) == obj_name){ // Encontrado
+    if(lines[i].substr(0, pos) == obj_name){ // Encontrado
       required = i;
       break;
     }
   }
 
-  if (required != -1){ // No encontrado, creamos nuevo
+  if(required != -1){ // No encontrado, creamos nuevo
     required = lines.size();
     lines.push_back(obj_name + ";0;0;0;0;0;0;0;0;0;0;0");
   }
@@ -99,8 +104,7 @@ int main(int argc, char** argv){
   lines.erase(lines.begin() + required);
   pos = required_Class.find(";");
   required_Class.erase(0, pos + 1);
-  double data[NUM_FIELDS];
-  for (int i = 0; i < NUM_FIELDS; i++){
+  for(int i = 0; i < NUM_FIELDS; i++){
     pos = required_Class.find(";");
     data[i] = stod(required_Class.substr(0, pos));
   }
@@ -180,7 +184,16 @@ int main(int argc, char** argv){
   }
 
   // Guarda la info en el fichero objetos
-
+  std::ofstream newObjects(PATH + DATA_NAME);
+  for(int i = 0; i < lines.size(); i++){
+    newObjects << lines[i] << endl;
+  }
+  newObjects << required_Class;
+  for(int i = 0; i < NUM_FIELDS; i++){
+    newObjects << ";" << data[i];
+  }
+  newObjects << endl;
+  newObjects.close();
 
   waitKey(0);
 
