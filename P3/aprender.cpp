@@ -43,44 +43,11 @@ int main(int argc, char** argv){
     exit(1);
   }
 
-  // Parameters reading
+  // Lectura de parametros
   string fich_name = argv[1];
   string obj_name = argv[2];
   
   fich_name = PATH + "circulo1.pgm";
-
-  // File reading
-  Mat image = imread(samples::findFile(fich_name), IMREAD_COLOR);
-  if (image.empty()){
-    printf("Error opening image: %s\n", fich_name.c_str());
-    return EXIT_FAILURE;
-  }
-  imshow("Image to learn", image);
-  
-  Mat otsu = otsu_threshold(image, 5);
-
-  imshow("Image otsurized", otsu);
-
-  Mat canny;
-  Canny(otsu, canny, 100, 200);
-  vector<vector<Point>> contours;
-  findContours(canny, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
-
-  // Descarta basura
-  float maxArea = 0;
-  float aux;
-  int theBiggest = 0;
-  for (int i = 0; i < contours.size(); i++){
-    aux = contourArea(contours[i]);
-    if (aux > maxArea){
-      theBiggest = i;
-      maxArea = aux;
-    }
-  }
-
-  Moments mu = moments(contours[theBiggest]); // Los momentos
-  float area = maxArea;
-  float perim = arcLength(contours[theBiggest], true);
 
   std::ifstream objects(PATH + DATA_NAME);
 
@@ -98,6 +65,7 @@ int main(int argc, char** argv){
     cout << "No existe objetos.txt, creando uno nuevo\n";
     std::ofstream s(PATH + DATA_NAME);
     s.close();
+    objects = std::ifstream(PATH + DATA_NAME);
   }
 
   // Los divide en lineas
@@ -110,10 +78,6 @@ int main(int argc, char** argv){
     buffer_s.erase(0, pos + 1);
     pos = buffer_s.find("\n");
   }
-  //cout << lineas.size() << endl;
-  //for (int i = 0; i < lineas.size(); i++){
-  //  cout << lineas[i] << endl;
-  //}
 
   // Encuentra la clase afectada, o no!
   int required = -1;
@@ -135,14 +99,88 @@ int main(int argc, char** argv){
   lines.erase(lines.begin() + required);
   pos = required_Class.find(";");
   required_Class.erase(0, pos + 1);
-  double data[11];
-  //for (int i = 0; i < NUM_FIELDS; i++){
-  //  data[i] = 
-  //}
-  
-  // SEGUIR DESDE AQUI
-  //float media = muestras / nMuestras;
-  //float varianza = sum(pow((muestra - media), 2)) / (nMuestras);
+  double data[NUM_FIELDS];
+  for (int i = 0; i < NUM_FIELDS; i++){
+    pos = required_Class.find(";");
+    data[i] = stod(required_Class.substr(0, pos));
+  }
+
+  // Lee el archivo a aprender
+  Mat image = imread(samples::findFile(fich_name), IMREAD_COLOR);
+  if(image.empty()){
+    printf("Error opening image: %s\n", fich_name.c_str());
+    return EXIT_FAILURE;
+  }
+  imshow("Image to learn", image);
+
+  Mat otsu = otsu_threshold(image, 5);
+
+  imshow("Image otsurized", otsu);
+
+  Mat canny;
+  Canny(otsu, canny, 100, 200);
+  vector<vector<Point>> contours;
+  findContours(canny, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
+
+  // Descarta basura
+  float maxArea = 0;
+  float aux;
+  int theBiggest = 0;
+  for(int i = 0; i < contours.size(); i++){
+    aux = contourArea(contours[i]);
+    if(aux > maxArea){
+      theBiggest = i;
+      maxArea = aux;
+    }
+  }
+
+  Moments mu = moments(contours[theBiggest]); // Los momentos
+  double huMoments[7];
+  HuMoments(mu, huMoments);
+
+  float area = maxArea;
+  float perim = arcLength(contours[theBiggest], true);
+
+  // El primer campo es el numero de elementos
+  if (data[0] == 0){
+    data[0] = 1; // Numero de muestras
+    data[1] = area; // Media del area
+    data[2] = 0; // Varianza del area
+    data[3] = perim; // Media del perimetro
+    data[4] = 0; // Varianza del perimetro
+    data[5] = huMoments[0]; // Media del primer momento Hu
+    data[6] = 0; // Varianza del primer momento Hu
+    data[7] = huMoments[1]; // Media del segundo momento Hu
+    data[8] = 0; // Varianza del segundo momento Hu
+    data[9] = huMoments[2]; // Media del tercer momento Hu
+    data[10] = 0; // Varianza del tercer momento Hu
+  }else{
+    // Numero muestras
+    data[0]++;
+    // Media del area
+    data[1] = data[1] * (data[0] - 1) + area / data[0];
+    // Varianza del area
+    data[2] = data[2] * (data[0] - 1) + pow((area - data[1]), 2) / data[0];
+    // Media del perimetro
+    data[3] = data[3] * (data[0] - 1) + perim / data[0];
+    // Varianza del perimetro
+    data[4] = data[4] * (data[0] - 1) + pow((perim - data[3]), 2) / data[0];
+    // Media del primer momento Hu
+    data[5] = data[5] * (data[0] - 1) + huMoments[0] / data[0];
+    // Varianza del primer momento Hu
+    data[6] = data[6] * (data[0] - 1) + pow((huMoments[0] - data[5]), 2) / data[0];
+    // Media del segundo momento Hu
+    data[7] = data[7] * (data[0] - 1) + huMoments[1] / data[0];
+    // Varianza del segundo momento Hu
+    data[8] = data[8] * (data[0] - 1) + pow((huMoments[1] - data[7]), 2) / data[0];
+    // Media del tercer momento Hu
+    data[9] = data[9] * (data[0] - 1) + huMoments[2] / data[0];
+    // Varianza del tercer momento Hu
+    data[10] = data[10] * (data[0] - 1) + pow((huMoments[2] - data[9]), 2) / data[0];
+  }
+
+  // Guarda la info en el fichero objetos
+
 
   waitKey(0);
 
