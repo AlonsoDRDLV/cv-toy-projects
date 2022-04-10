@@ -18,7 +18,7 @@ using std::cout;
 using std::endl;
 using namespace cv;
 
-const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
+const string PATH = "C:\\Users\\AlonsoDRDLV\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
 const string DATA_NAME = "objetos.txt";
 const int BUFF_LENGTH = 1024;
 const int NUM_DESCRIPTORS = 5;
@@ -74,6 +74,8 @@ int main(int argc, char** argv){
       buffer_s.erase(0, pos + 1);
       pos = buffer_s.find("\n");
     }
+    std::ofstream s(PATH + DATA_NAME, std::ofstream::trunc);
+    s.close();
 
   }else{ // Primer objeto aprendido
     cout << "No existe objetos.txt, creando uno nuevo\n";
@@ -94,7 +96,7 @@ int main(int argc, char** argv){
     }
   }
 
-  if(required != -1){ // No encontrado, creamos nuevo
+  if(required == -1){ // No encontrado, creamos nuevo
     required = lines.size();
     lines.push_back(obj_name + ";0;0;0;0;0;0;0;0;0;0;0");
   }
@@ -162,25 +164,25 @@ int main(int argc, char** argv){
     // Numero muestras
     data[0]++;
     // Media del area
-    data[1] = data[1] * (data[0] - 1) + area / data[0];
+    data[1] = (data[1] * (data[0] - 1) + area) / data[0];
     // Varianza del area
-    data[2] = data[2] * (data[0] - 1) + pow((area - data[1]), 2) / data[0];
+    data[2] = (data[2] * (data[0] - 1) + pow((area - data[1]), 2)) / data[0];
     // Media del perimetro
-    data[3] = data[3] * (data[0] - 1) + perim / data[0];
+    data[3] = (data[3] * (data[0] - 1) + perim) / data[0];
     // Varianza del perimetro
-    data[4] = data[4] * (data[0] - 1) + pow((perim - data[3]), 2) / data[0];
+    data[4] = (data[4] * (data[0] - 1) + pow((perim - data[3]), 2)) / data[0];
     // Media del primer momento Hu
-    data[5] = data[5] * (data[0] - 1) + huMoments[0] / data[0];
+    data[5] = (data[5] * (data[0] - 1) + huMoments[0]) / data[0];
     // Varianza del primer momento Hu
-    data[6] = data[6] * (data[0] - 1) + pow((huMoments[0] - data[5]), 2) / data[0];
+    data[6] = (data[6] * (data[0] - 1) + pow((huMoments[0] - data[5]), 2)) / data[0];
     // Media del segundo momento Hu
-    data[7] = data[7] * (data[0] - 1) + huMoments[1] / data[0];
+    data[7] = (data[7] * (data[0] - 1) + huMoments[1]) / data[0];
     // Varianza del segundo momento Hu
-    data[8] = data[8] * (data[0] - 1) + pow((huMoments[1] - data[7]), 2) / data[0];
+    data[8] = (data[8] * (data[0] - 1) + pow((huMoments[1] - data[7]), 2)) / data[0];
     // Media del tercer momento Hu
-    data[9] = data[9] * (data[0] - 1) + huMoments[2] / data[0];
+    data[9] = (data[9] * (data[0] - 1) + huMoments[2]) / data[0];
     // Varianza del tercer momento Hu
-    data[10] = data[10] * (data[0] - 1) + pow((huMoments[2] - data[9]), 2) / data[0];
+    data[10] = (data[10] * (data[0] - 1) + pow((huMoments[2] - data[9]), 2)) / data[0];
   }
 
   // Guarda la info en el fichero objetos
@@ -188,7 +190,7 @@ int main(int argc, char** argv){
   for(int i = 0; i < lines.size(); i++){
     newObjects << lines[i] << endl;
   }
-  newObjects << required_Class;
+  newObjects << obj_name;
   for(int i = 0; i < NUM_FIELDS; i++){
     newObjects << ";" << data[i];
   }
