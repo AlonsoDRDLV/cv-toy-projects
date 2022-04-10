@@ -18,7 +18,7 @@ using std::cout;
 using std::endl;
 using namespace cv;
 
-const string PATH = "C:\\Users\\AlonsoDRDLV\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
+const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
 const string DATA_NAME = "objetos.txt";
 const int BUFF_LENGTH = 1024;
 const int NUM_DESCRIPTORS = 5;
@@ -109,6 +109,7 @@ int main(int argc, char** argv){
   for(int i = 0; i < NUM_FIELDS; i++){
     pos = required_Class.find(";");
     data[i] = stod(required_Class.substr(0, pos));
+    required_Class.erase(0, pos + 1);
   }
 
   // Lee el archivo a aprender
@@ -143,6 +144,12 @@ int main(int argc, char** argv){
   Moments mu = moments(contours[theBiggest]); // Los momentos
   double huMoments[7];
   HuMoments(mu, huMoments);
+
+  // Para evitar que se pierda tanta informacion al operar con valores minusculos,
+  // mejor trabajar con escalas logaritmicas:
+  for(int i = 0; i < 7; i++){
+    huMoments[i] = -1 * copysign(1.0, huMoments[i]) * log10(abs(huMoments[i]));
+  }
 
   float area = maxArea;
   float perim = arcLength(contours[theBiggest], true);
@@ -191,8 +198,8 @@ int main(int argc, char** argv){
     newObjects << lines[i] << endl;
   }
   newObjects << obj_name;
-  for(int i = 0; i < NUM_FIELDS; i++){
-    newObjects << ";" << data[i];
+  for(int i = 1; i < NUM_FIELDS; i++){
+    newObjects << ";" << data[i - 1];
   }
   newObjects << endl;
   newObjects.close();

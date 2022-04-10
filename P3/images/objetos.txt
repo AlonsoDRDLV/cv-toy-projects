@@ -1,7 +1,1 @@
-asdfghjiklñ
-asdfghjiklñasdfghjiklñasdfghjiklñ
-asdfghjiklñjiklñjiklñjiklñjiklñjiklñjiklñjiklñjiklñjiklñjiklñjiklñjiklñ
-jiklñjiklñjiklñjiklñ
-123
-jiklñjiklñjiklñjiklñjiklñjiklñjiklñjiklñjiklñjiklñjiklñjiklñ
-jiklñjiklñjiklñs
+circulo;4;1935.5;0;165.782;2.15241e-08;0.797797;4.53276e-14;4.76562;5.11491e-12;6.11042;6.58606e-12

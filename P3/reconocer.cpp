@@ -49,10 +49,11 @@ int main(int argc, char** argv){
   // Lee datos
   char* buffer = new char[BUFF_LENGTH];
   string buffer_s;
-  int readedCount;
-  double data[NUM_FIELDS];
+  int readedCount, pos;
   vector<string> lines;
-  int pos;
+  vector<string> classes;
+  vector<vector<double>> data;
+  vector<double> aux;
 
   std::ifstream objects(PATH + DATA_NAME);
 
@@ -61,43 +62,58 @@ int main(int argc, char** argv){
       objects.read(buffer, BUFF_LENGTH);
       readedCount = objects.gcount();
       buffer_s = buffer_s + string(buffer).substr(0, readedCount);
-    } while(readedCount == BUFF_LENGTH);
+    }while (readedCount == BUFF_LENGTH);
+
     // Los divide en lineas
     pos = buffer_s.find("\n");
-    while(pos != string::npos){
-      if(pos > MIN_LENGTH_LINE){
+    while (pos != string::npos){
+      if (pos > MIN_LENGTH_LINE){
         lines.push_back(buffer_s.substr(0, pos));
       }
       buffer_s.erase(0, pos + 1);
       pos = buffer_s.find("\n");
     }
+    objects.close();
 
     // Indexa los nombres de las clases y sus datos
-    vector<vector<double>> data;
-    vector<string> classes;
     for (int i = 0; i < lines.size(); i++){
       pos = lines[i].find(";");
       classes.push_back(lines[i].substr(0, pos));
-      for
+      lines[i].erase(0, pos + 1);
+      for (int j = 1; j < NUM_FIELDS; j++){
+        pos = lines[i].find(";");
+        aux.push_back(stod(lines[i].substr(0, pos)));
+        lines[i].erase(0, pos + 1);
+      }
+      data.push_back(aux);
     }
 
-    // Lee datos de la clase afectada
-    string required_Class = lines[required];
-    lines.erase(lines.begin() + required);
-    pos = required_Class.find(";");
-    required_Class.erase(0, pos + 1);
-    for(int i = 0; i < NUM_FIELDS; i++){
-      pos = required_Class.find(";");
-      data[i] = stod(required_Class.substr(0, pos));
-    }
-
-    objects.close();
   }else{ // Primer objeto aprendido
     cout << "No encuentra objetos.txt, no se puede reconocer nada\n";
     exit(1);
   }
 
+  // Lee el archivo a aprender
+  Mat image = imread(samples::findFile(fich_name), IMREAD_COLOR);
+  if(image.empty()){
+    printf("Error opening image: %s\n", fich_name.c_str());
+    return EXIT_FAILURE;
+  }
+  imshow("Image to learn", image);
 
+  Mat otsu = otsu_threshold(image, 5);
+
+  imshow("Image otsurized", otsu);
+
+  Mat canny;
+  Canny(otsu, canny, 100, 200);
+  vector<vector<Point>> contours;
+  findContours(canny, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
+
+  // Saca los valores de los descriptores de todos los objetos detectados
+  for (int i = 0; i < contours.size(); i++){
+    //Continuará?¿??¿?¿ xd esperemos que si, solo voy a enyesar cosas
+  }
 
   waitKey(0);
   
