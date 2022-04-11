@@ -111,9 +111,55 @@ int main(int argc, char** argv){
   findContours(canny, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
 
   // Saca los valores de los descriptores de todos los objetos detectados
+  vector<float> areas;
+  vector<float> perims;
+  vector<double> firstHuMoments;
+  vector<double> secondHuMoments;
+  vector<double> thirdHuMoments;
   for (int i = 0; i < contours.size(); i++){
-    //Continuará?¿??¿?¿ xd esperemos que si, solo voy a enyesar cosas
+    areas.push_back(contourArea(contours[i]));
+    perims.push_back(arcLength(contours[i], true));
+    Moments mu = moments(contours[i]);  
+    double huMoments[3] = {0.0, 0.0, 0.0};
+    for(int moment = 0; moment < 3; moment++){
+      huMoments[moment] = -1 * copysign(1.0, huMoments[moment]) 
+          * log10(abs(huMoments[moment]));
+    }
+    firstHuMoments.push_back(huMoments[0]);
+    secondHuMoments.push_back(huMoments[1]);
+    thirdHuMoments.push_back(huMoments[2]);
   }
+
+  // Covars matrixes
+  vector<Mat> covars;
+  for (int classes = 0; classes < data.size(); classes++){
+    Mat covar = Mat_<double>(5, 5);
+    double variances[5];
+    int n = data[classes][0];
+    variances[0] = data[classes][2] * n;
+    variances[1] = data[classes][4] * n;
+    variances[2] = data[classes][6] * n;
+    variances[3] = data[classes][8] * n;
+    variances[4] = data[classes][10] * n;
+    for(int i = 0; i < 5; i++){
+      for(int j = 0; j < 5; j++){
+        covar.at<double>(i, j) = variances[i] * variances[j] / n;
+      }
+    }
+    covars.push_back(covar);
+  }
+
+  // Mahalanobis
+  double array1;
+  double array2;
+  Mat matrix;
+  vector<double> distances;
+  for (int contourClass = 0; contourClass < data.size(); contourClass++){
+    for (int contour = 0; contour < contours.size(); contour++){
+      distances.push_back(Mahalanobis(array1, array2, matrix));
+    }
+  }
+
 
   waitKey(0);
   

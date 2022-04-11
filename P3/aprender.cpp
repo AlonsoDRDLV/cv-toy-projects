@@ -142,12 +142,12 @@ int main(int argc, char** argv){
   }
 
   Moments mu = moments(contours[theBiggest]); // Los momentos
-  double huMoments[7];
+  double huMoments[3];
   HuMoments(mu, huMoments);
 
   // Para evitar que se pierda tanta informacion al operar con valores minusculos,
   // mejor trabajar con escalas logaritmicas:
-  for(int i = 0; i < 7; i++){
+  for(int i = 0; i < 3; i++){
     huMoments[i] = -1 * copysign(1.0, huMoments[i]) * log10(abs(huMoments[i]));
   }
 
