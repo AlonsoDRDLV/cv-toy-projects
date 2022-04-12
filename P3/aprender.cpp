@@ -67,8 +67,8 @@ int main(int argc, char** argv){
     }while(readedCount == BUFF_LENGTH);
     // Los divide en lineas
     pos = buffer_s.find("\n");
-    while(pos != string::npos){
-      if(pos > MIN_LENGTH_LINE){
+    while (pos != string::npos){
+      if (pos > MIN_LENGTH_LINE){
         lines.push_back(buffer_s.substr(0, pos));
       }
       buffer_s.erase(0, pos + 1);
@@ -88,15 +88,15 @@ int main(int argc, char** argv){
 
   // Encuentra la clase afectada, o no!
   int required = -1;
-  for(int i = 0; i < lines.size(); i++){
+  for (int i = 0; i < lines.size(); i++){
     pos = lines[i].find(";");
-    if(lines[i].substr(0, pos) == obj_name){ // Encontrado
+    if (lines[i].substr(0, pos) == obj_name){ // Encontrado
       required = i;
       break;
     }
   }
 
-  if(required == -1){ // No encontrado, creamos nuevo
+  if (required == -1){ // No encontrado, creamos nuevo
     required = lines.size();
     lines.push_back(obj_name + ";0;0;0;0;0;0;0;0;0;0;0");
   }
@@ -106,7 +106,7 @@ int main(int argc, char** argv){
   lines.erase(lines.begin() + required);
   pos = required_Class.find(";");
   required_Class.erase(0, pos + 1);
-  for(int i = 0; i < NUM_FIELDS; i++){
+  for (int i = 0; i < NUM_FIELDS; i++){
     pos = required_Class.find(";");
     data[i] = stod(required_Class.substr(0, pos));
     required_Class.erase(0, pos + 1);
@@ -114,7 +114,7 @@ int main(int argc, char** argv){
 
   // Lee el archivo a aprender
   Mat image = imread(samples::findFile(fich_name), IMREAD_COLOR);
-  if(image.empty()){
+  if (image.empty()){
     printf("Error opening image: %s\n", fich_name.c_str());
     return EXIT_FAILURE;
   }
@@ -133,9 +133,9 @@ int main(int argc, char** argv){
   float maxArea = 0;
   float aux;
   int theBiggest = 0;
-  for(int i = 0; i < contours.size(); i++){
+  for (int i = 0; i < contours.size(); i++){
     aux = contourArea(contours[i]);
-    if(aux > maxArea){
+    if (aux > maxArea){
       theBiggest = i;
       maxArea = aux;
     }
@@ -147,7 +147,7 @@ int main(int argc, char** argv){
 
   // Para evitar que se pierda tanta informacion al operar con valores minusculos,
   // mejor trabajar con escalas logaritmicas:
-  for(int i = 0; i < 3; i++){
+  for (int i = 0; i < 3; i++){
     huMoments[i] = -1 * copysign(1.0, huMoments[i]) * log10(abs(huMoments[i]));
   }
 
@@ -194,11 +194,11 @@ int main(int argc, char** argv){
 
   // Guarda la info en el fichero objetos
   std::ofstream newObjects(PATH + DATA_NAME);
-  for(int i = 0; i < lines.size(); i++){
+  for (int i = 0; i < lines.size(); i++){
     newObjects << lines[i] << endl;
   }
   newObjects << obj_name;
-  for(int i = 1; i < NUM_FIELDS; i++){
+  for (int i = 1; i < NUM_FIELDS; i++){
     newObjects << ";" << data[i - 1];
   }
   newObjects << endl;
