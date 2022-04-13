@@ -158,9 +158,7 @@ int main(int argc, char** argv){
     for (int i_class = 0; i_class < means.size(); i_class++){ //means.size() y variance.size() == numero de clases
       double aux = 0.0;
       for (int i_desc = 0; i_desc < means[0].size(); i_desc++) { //los elementos de means y variances tienen size() == num de descriptores
-        double mean;
-        double variance;
-        double descriptor;
+        double mean, variance, descriptor;
         descriptor = detected_obj_descriptors[i_obj][i_desc];
         mean = means[i_class][i_desc];
         variance = variances[i_class][i_desc];
