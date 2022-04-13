@@ -53,13 +53,31 @@ int main(int argc, char** argv){
   int readedCount, pos;
   vector<string> lines;
   vector<string> classes;
-  vector<vector<double>> data;
-  vector<double> aux;
+  vector<int> n; //numero muestras con las que se ha entrenado al modelo para una clase concreta
+  vector<vector<double>> means; //medias de los descriptores de cada clase
+  vector<vector<double>> variances; //varianzas de los descriptores de cada clase
+  vector<double> means_aux;
+  vector<double> variances_aux;
 
   std::ifstream objects(PATH + DATA_NAME);
 
-  if (objects.is_open()){ // Existen datos anteriores
-    do{
+  if (objects.is_open()) { // Existen datos anteriores
+    for (string line; std::getline(objects, line); ) {
+      std::stringstream line_stream(line);
+      int i = 0;
+      for (string token; std::getline(line_stream, token, ';');) {
+        if (i == 0) classes.push_back(token);
+        else if (i == 1) n.push_back(stoi(token));
+        else if ((i % 2) == 0) means_aux.push_back(stod(token));
+        else variances_aux.push_back(stod(token));
+        i++;
+      }
+      means.push_back(means_aux);
+      variances.push_back(variances_aux);
+    }
+    objects.close();
+  
+    /*do {
       objects.read(buffer, BUFF_LENGTH);
       readedCount = objects.gcount();
       buffer_s = buffer_s + string(buffer).substr(0, readedCount);
@@ -74,8 +92,9 @@ int main(int argc, char** argv){
       buffer_s.erase(0, pos + 1);
       pos = buffer_s.find("\n");
     }
-    objects.close();
-
+    
+    
+    
     // Indexa los nombres de las clases y sus datos
     for (int i = 0; i < lines.size(); i++){
       pos = lines[i].find(";");
@@ -88,7 +107,7 @@ int main(int argc, char** argv){
       }
       data.push_back(aux);
     }
-
+  */
   }else{ // Primer objeto aprendido
     cout << "No encuentra objetos.txt, no se puede reconocer nada\n";
     exit(1);
@@ -113,7 +132,8 @@ int main(int argc, char** argv){
   findContours(canny, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
 
   // Saca los valores de los descriptores de todos los objetos detectados
-  vector<vector<double>> descriptors; //area, perimetro, momentos
+  //perdon por el nombre verboso, pero asi se entiende mejor en el siguiente bloque de codigo de que descriptores hablamos
+  vector<vector<double>> detected_obj_descriptors; //area, perimetro, momentos 
   vector<double> v_aux;
   for (int i = 0; i < contours.size(); i++){
     v_aux.push_back(contourArea(contours[i]));
@@ -126,35 +146,29 @@ int main(int argc, char** argv){
           * log10(abs(huMoments[moment]));
       v_aux.push_back(huMoments[moment]);
     }
-    descriptors.push_back(v_aux);
+    detected_obj_descriptors.push_back(v_aux);
     v_aux.clear();
   }
 
   // Calcula las distancias entre todas las clases para todos los contornos
   // Cada componente: {Distancia del objeto i a la clase j}
   vector<vector<double>> mahalanobis;
-  for (int i = 0; i < descriptors.size(); i++){
+  for (int i_obj = 0; i_obj < detected_obj_descriptors.size(); i_obj++){
     vector<double> aux_v;
-    for (int j = 0; j < data.size(); j++){
+    for (int i_class = 0; i_class < means.size(); i_class++){ //means.size() y variance.size() == numero de clases
       double aux = 0.0;
-      int i_class = 0;
-      int i_object = 0;
-      while (i_class < data[0].size()){
+      for (int i_desc = 0; i_desc < means[0].size(); i_desc++) { //los elementos de means y variances tienen size() == num de descriptores
         double mean;
         double variance;
         double descriptor;
-        descriptor = descriptors[i][i_object];
-        mean = data[j][i_class];
-        variance = data[j][i_class + 1];
+        descriptor = detected_obj_descriptors[i_obj][i_desc];
+        mean = means[i_class][i_desc];
+        variance = variances[i_class][i_desc];
         aux += pow((descriptor - mean), 2) / variance;
-
-        i_class += 2;
-        i_object++;
       }
       aux_v.push_back(aux);
     }
     mahalanobis.push_back(aux_v);
-    aux_v.clear();
   }
 
   // Por ultimo se comprueba si para cada contorno se le asocia una clase,
@@ -190,6 +204,7 @@ int main(int argc, char** argv){
   waitKey(0);
   
   return EXIT_SUCCESS;
+
 }
 
 Mat adapt_gauss_threshold(Mat image, int blur_size, int threshold_type, int block_size, 
