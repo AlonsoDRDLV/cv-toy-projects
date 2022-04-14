@@ -1,14 +1,12 @@
 #include "opencv2/imgcodecs.hpp"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
-//#include "opencv2/objdetect.hpp"
 #include "opencv2/imgproc.hpp"
 #include <iostream>
 #include <string>
 #include <fstream>
 #include <iomanip>
 #include <vector>
-//#include <cmath>
 
 using std::to_string;
 using std::string;
@@ -18,9 +16,8 @@ using std::cout;
 using std::endl;
 using namespace cv;
 
-const string PATH = "C:\\Users\\AlonsoDRDLV\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
+const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
 const string DATA_NAME = "objetos.txt";
-const int BUFF_LENGTH = 1024;
 const int HU_MOMENTS = 3;
 const int NUM_DESCRIPTORS = 5;
 const int NUM_FIELDS = NUM_DESCRIPTORS * 2 + 2;
@@ -45,10 +42,10 @@ int main(int argc, char** argv){
   }
 
   // Lectura de parametros
-  string fich_name = argv[1];
+  string fich_name = PATH + argv[1];
+  string objects_name = PATH + DATA_NAME;
 
   // Lee datos
-  char* buffer = new char[BUFF_LENGTH];
   string buffer_s;
   int readedCount, pos;
   vector<string> lines;
@@ -59,62 +56,33 @@ int main(int argc, char** argv){
   vector<double> means_aux;
   vector<double> variances_aux;
 
-  std::ifstream objects(PATH + DATA_NAME);
+  std::ifstream objects(objects_name);
 
-  if (objects.is_open()) { // Existen datos anteriores
-    for (string line; std::getline(objects, line); ) {
+  if (objects.is_open()){ // Se encuentran datos anteriores
+    for (string line; std::getline(objects, line); ){
       std::stringstream line_stream(line);
       int i = 0;
-      for (string token; std::getline(line_stream, token, ';');) {
-        if (i == 0) classes.push_back(token);
-        else if (i == 1) n.push_back(stoi(token));
-        else if ((i % 2) == 0) means_aux.push_back(stod(token));
-        else variances_aux.push_back(stod(token));
-        i++;
+      for (string token; std::getline(line_stream, token, ';'); i++){
+        if(i == 0){
+          classes.push_back(token);
+        }else if(i == 1){
+          n.push_back(stoi(token));
+        }else if((i % 2) == 0){
+          means_aux.push_back(stod(token));
+        }else{
+          variances_aux.push_back(stod(token));
+        }
       }
       means.push_back(means_aux);
       variances.push_back(variances_aux);
     }
     objects.close();
-  
-    /*do {
-      objects.read(buffer, BUFF_LENGTH);
-      readedCount = objects.gcount();
-      buffer_s = buffer_s + string(buffer).substr(0, readedCount);
-    }while (readedCount == BUFF_LENGTH);
-
-    // Los divide en lineas
-    pos = buffer_s.find("\n");
-    while (pos != string::npos){
-      if (pos > MIN_LENGTH_LINE){
-        lines.push_back(buffer_s.substr(0, pos));
-      }
-      buffer_s.erase(0, pos + 1);
-      pos = buffer_s.find("\n");
-    }
-    
-    
-    
-    // Indexa los nombres de las clases y sus datos
-    for (int i = 0; i < lines.size(); i++){
-      pos = lines[i].find(";");
-      classes.push_back(lines[i].substr(0, pos));
-      lines[i].erase(0, pos + 1);
-      for (int j = 1; j < NUM_FIELDS; j++){
-        pos = lines[i].find(";");
-        aux.push_back(stod(lines[i].substr(0, pos)));
-        lines[i].erase(0, pos + 1);
-      }
-      data.push_back(aux);
-    }
-  */
-  }else{ // Primer objeto aprendido
-    cout << "No encuentra objetos.txt, no se puede reconocer nada\n";
+  }else{ // No se encuentra el fichero con los datos
+    cout << "objetos.txt not found, exiting\n";
     exit(1);
   }
 
-  
-  // Lee el archivo a clasificar
+  // Lee la imagen a clasificar
   Mat image = imread(samples::findFile(fich_name), IMREAD_COLOR);
   if(image.empty()){
     printf("Error opening image: %s\n", fich_name.c_str());
@@ -122,17 +90,47 @@ int main(int argc, char** argv){
   }
   imshow("Image to learn", image);
 
-  Mat otsu = otsu_threshold(image, 5);
-
+  // Aplica thresholding de Otsu para pasarla a monocromo: fondo-negro, resto-blanco
+  Mat otsu = otsu_threshold(image, 13);
   imshow("Image otsurized", otsu);
 
   Mat canny;
   Canny(otsu, canny, 100, 200);
   vector<vector<Point>> contours;
-  findContours(canny, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
+  // ANTES:
+  //findContours(canny, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
+  // DESPUÉS:
+  vector<vector<Point>> aux;
+  // Saca la línea azul esa fea a la izquierda, tengo que ver cómo retirarla
+  Mat labelImage(otsu.size(), CV_32S);
+  int nLabels = connectedComponents(otsu, labelImage, 8);
+  vector<Vec3b> colors(nLabels);
+  colors[0] = Vec3b(0, 0, 0);//background
+
+  for(int label = 1; label < nLabels; ++label){
+    colors[label] = Vec3b((rand() & 255), (rand() & 255), (rand() & 255));
+  }
+
+  Mat* comp = new Mat[nLabels];
+  for(int i = 1; i < nLabels; i++){
+    comp[i - 1] = Mat(otsu.size(), CV_8UC1, Scalar(0));
+    for(int r = 0; r < otsu.rows; ++r){
+      for(int c = 0; c < otsu.cols; ++c){
+        int pixel = labelImage.at<int>(r, c);
+        if(pixel == i){
+          comp[i - 1].at<uchar>(r, c) = 255;
+        }
+        else{
+          comp[i - 1].at<uchar>(r, c) = 0;
+        }
+      }
+    }
+    imshow("Connected Components " + to_string(i), comp[i - 1]);
+    findContours(comp[i - 1], aux, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    contours.insert(contours.end(), aux.begin(), aux.end());
+  }
 
   // Saca los valores de los descriptores de todos los objetos detectados
-  //perdon por el nombre verboso, pero asi se entiende mejor en el siguiente bloque de codigo de que descriptores hablamos
   vector<vector<double>> detected_obj_descriptors; //area, perimetro, momentos 
   vector<double> v_aux;
   for (int i = 0; i < contours.size(); i++){
@@ -157,7 +155,7 @@ int main(int argc, char** argv){
     vector<double> aux_v;
     for (int i_class = 0; i_class < means.size(); i_class++){ //means.size() y variance.size() == numero de clases
       double aux = 0.0;
-      for (int i_desc = 0; i_desc < means[0].size(); i_desc++) { //los elementos de means y variances tienen size() == num de descriptores
+      for (int i_desc = 0; i_desc < means[0].size(); i_desc++){ //los elementos de means y variances tienen size() == num de descriptores
         double mean, variance, descriptor;
         descriptor = detected_obj_descriptors[i_obj][i_desc];
         mean = means[i_class][i_desc];
@@ -170,8 +168,7 @@ int main(int argc, char** argv){
   }
 
   // Por ultimo se comprueba si para cada contorno se le asocia una clase,
-  // ninguna o mas de una y se imprimen los resultados: CODIGO POR TERMINAR: me vuelvo a dormir xdxdxd
-  // Me ha costado pero esto es los moment center
+  // ninguna o mas de una y se imprimen los resultados:
   vector<Point2f> mc(contours.size());
   vector<Moments> mu(contours.size());
   for(size_t i = 0; i < contours.size(); i++){
@@ -194,10 +191,8 @@ int main(int argc, char** argv){
   cout << "\t Info: Area and Contour Length \n";
   for(size_t i = 0; i < contours.size(); i++){
     cout << " * Contour[" << i << "] - Area (M_00) = " << std::fixed << std::setprecision(2) << mu[i].m00
-      << " - Area OpenCV: " << contourArea(contours[i]) << " - Length: " << arcLength(nice_contours[i], true) << endl;
+      << " - Area OpenCV: " << contourArea(contours[i]) << " - Length: " << arcLength(contours[i], true) << endl;
   }
-
-
 
   waitKey(0);
   
