@@ -119,8 +119,9 @@ int main(int argc, char** argv){
   }
   imshow("Image to learn", image);
 
-  Mat otsu = otsu_threshold(image, 5);
-
+  //Mat otsu = otsu_threshold(image, 5);
+  Mat otsu =
+    adapt_mean_threshold(image, 7, THRESH_BINARY_INV, 51, 5);
   imshow("Image otsurized", otsu);
 
   Mat canny;
@@ -215,7 +216,6 @@ Mat adapt_gauss_threshold(Mat image, int blur_size, int threshold_type, int bloc
   medianBlur(result, result, 5);
   adaptiveThreshold(result, result, 255, ADAPTIVE_THRESH_GAUSSIAN_C, threshold_type, 
       block_size, c);
-  result = Mat(result.size(), result.type(), 255) - result;
   return result;
 }
 
@@ -226,7 +226,6 @@ Mat adapt_mean_threshold(Mat image, int blur_size, int threshold_type, int block
   medianBlur(result, result, 5);
   adaptiveThreshold(result, result, 255, ADAPTIVE_THRESH_MEAN_C, threshold_type,
       block_size, c);
-  result = Mat(result.size(), result.type(), 255) - result;
   return result;
 }
 
@@ -234,8 +233,7 @@ Mat otsu_threshold(Mat image, int gauss_size){
   Mat result = image.clone();
   cvtColor(result, result, COLOR_BGR2GRAY);
   GaussianBlur(result, result, Size(gauss_size, gauss_size), 0, 0);
-  threshold(result, result, 0, 255, THRESH_BINARY + THRESH_OTSU);
-  result = Mat(result.size(), result.type(), 255) - result;
+  threshold(result, result, 0, 255, THRESH_BINARY_INV + THRESH_OTSU);
   return result;
 }
 
