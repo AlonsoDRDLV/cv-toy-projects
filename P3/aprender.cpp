@@ -119,9 +119,9 @@ int main(int argc, char** argv){
   }
   imshow("Image to learn", image);
 
-  //Mat otsu = otsu_threshold(image, 5);
-  Mat otsu =
-    adapt_mean_threshold(image, 7, THRESH_BINARY_INV, 51, 5);
+  Mat otsu = otsu_threshold(image, 5);
+  //Mat otsu =
+  //  adapt_mean_threshold(image, 7, THRESH_BINARY_INV, 51, 5);
   imshow("Image otsurized", otsu);
 
   Mat canny;
