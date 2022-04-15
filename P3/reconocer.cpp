@@ -16,12 +16,13 @@ using std::cout;
 using std::endl;
 using namespace cv;
 
-const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
+const string PATH = "C:\\Users\\AlonsoDRDLV\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
 const string DATA_NAME = "objetos.txt";
 const int HU_MOMENTS = 3;
 const int NUM_DESCRIPTORS = 5;
 const int NUM_FIELDS = NUM_DESCRIPTORS * 2 + 2;
 const int MIN_LENGTH_LINE = NUM_FIELDS;
+const double chi_square_value = 11.07;//para grado de libertad = NUM_DESCRIPTORS y alfa = 0.05
 
 Mat adapt_gauss_threshold(Mat image, int blur_size, int threshold_type, int block_size, 
     double c);
@@ -149,26 +150,45 @@ int main(int argc, char** argv){
   }
 
   // Calcula las distancias entre todas las clases para todos los contornos
-  // Cada componente: {Distancia del objeto i a la clase j}
-  vector<vector<double>> mahalanobis;
+  // Cada componente: {Distancias de un objeto a todas las clases}
+  vector<vector<double>> mahalanobis_distances;
   for (int i_obj = 0; i_obj < detected_obj_descriptors.size(); i_obj++){
-    vector<double> aux_v;
+    vector<double> distances_to_classes;
     for (int i_class = 0; i_class < means.size(); i_class++){ //means.size() y variance.size() == numero de clases
-      double aux = 0.0;
+      double distance = 0.0;
       for (int i_desc = 0; i_desc < means[0].size(); i_desc++){ //los elementos de means y variances tienen size() == num de descriptores
         double mean, variance, descriptor;
         descriptor = detected_obj_descriptors[i_obj][i_desc];
         mean = means[i_class][i_desc];
         variance = variances[i_class][i_desc];
-        aux += pow((descriptor - mean), 2) / variance;
+        if (variance == 0) variance = 1; //evitar divisiones por 0
+        cout << i_class << "  descriptor: " << descriptor << "  media: " << mean << "  varianza: " << variance << endl;
+        distance += pow((descriptor - mean), 2) / variance;
       }
-      aux_v.push_back(aux);
+      distances_to_classes.push_back(distance);
     }
-    mahalanobis.push_back(aux_v);
+    mahalanobis_distances.push_back(distances_to_classes);
+  }
+  //checkear distancias (no salen bien haha)
+  for (vector<double> a : mahalanobis_distances) {
+    for (double b : a) {
+      cout << "distance: " << b << " - ";
+    }
+    cout << endl;
   }
 
-  // Por ultimo se comprueba si para cada contorno se le asocia una clase,
-  // ninguna o mas de una y se imprimen los resultados:
+  /*
+  // Por ultimo se comprueba si para cada contorno se le asocia una clase
+  vector<vector<bool>> chisquare_hypothesis_test;
+  for (vector<double> distances_to_classes : mahalanobis_distances) {
+    vector<bool> obj_classification; //almacena si pertenece o no el objeto a las clases
+    for (double distance : distances_to_classes) {
+      obj_classification.push_back(distance <= chi_square_value);
+    }
+    chisquare_hypothesis_test.push_back(obj_classification);
+  }
+  
+  //se imprimen los resultados:
   vector<Point2f> mc(contours.size());
   vector<Moments> mu(contours.size());
   for(size_t i = 0; i < contours.size(); i++){
@@ -193,7 +213,7 @@ int main(int argc, char** argv){
     cout << " * Contour[" << i << "] - Area (M_00) = " << std::fixed << std::setprecision(2) << mu[i].m00
       << " - Area OpenCV: " << contourArea(contours[i]) << " - Length: " << arcLength(contours[i], true) << endl;
   }
-
+*/
   waitKey(0);
   
   return EXIT_SUCCESS;
