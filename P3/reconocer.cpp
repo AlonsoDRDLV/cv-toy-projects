@@ -56,6 +56,7 @@ int main(int argc, char** argv){
   vector<int> n; //numero muestras con las que se ha entrenado al modelo para una clase concreta
   vector<vector<double>> means; //medias de los descriptores de cada clase
   vector<vector<double>> variances; //varianzas de los descriptores de cada clase
+  vector<vector<double>> estimated_variances; //varianzas estimadas de los descriptores de cada clase
   
   std::ifstream objects(objects_name);
 
@@ -64,21 +65,34 @@ int main(int argc, char** argv){
       std::stringstream line_stream(line);
       vector<double> means_aux;
       vector<double> variances_aux;
+      vector<double> estimated_variances_aux;
       int i = 0;
       for (string token; std::getline(line_stream, token, ';'); i++){
         if(i == 0){
           classes.push_back(token);
         }else if(i == 1){
           n.push_back(stoi(token));
-        }else if((i % 2) == 0){
-          means_aux.push_back(stod(token));
-        }else{
+        }else if((i % 3) == 2){
+          //soy la buena, descomentame cuando compruebes que lee bien
+          //means_aux.push_back(stod(token)/n.[n.size()-1]);
+          means_aux.push_back(stod(token)); 
+        }else if((i % 3) == 0) {
+          //variances_aux.push_back(stod(token)/n.[n.size()-1]);
           variances_aux.push_back(stod(token));
+        }else if ((i % 3) == 1) {
+          //estimated_variances_aux.push_back(stod(token)/n.[n.size()-1]);
+          estimated_variances_aux.push_back(stod(token));
         }
       }
+      //borrame despues de comprobar que va
       cout << line << endl;
+      for (double a : means_aux) cout << a << " "; cout << endl;
+      for (double a : variances_aux) cout << a << " "; cout << endl;
+      for (double a : estimated_variances_aux) cout << a << " "; cout << endl;
+      
       means.push_back(means_aux);
       variances.push_back(variances_aux);
+      estimated_variances.push_back(variances_aux);
     }
     objects.close();
   }else{ // No se encuentra el fichero con los datos
