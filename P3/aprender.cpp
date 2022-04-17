@@ -20,9 +20,10 @@ using namespace cv;
 
 const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
 const string DATA_NAME = "objetos.txt";
+const double VAR_PERCENTAGE = 0.25;
 const int BUFF_LENGTH = 1024;
 const int NUM_DESCRIPTORS = 5;
-const int NUM_FIELDS = NUM_DESCRIPTORS * 2 + 2;
+const int NUM_FIELDS = NUM_DESCRIPTORS * 3 + 2;
 const int MIN_LENGTH_LINE = NUM_FIELDS;
 
 Mat adapt_gauss_threshold(Mat image, int blur_size, int threshold_type, int block_size, 
@@ -32,7 +33,7 @@ Mat adapt_mean_threshold(Mat image, int blur_size, int threshold_type, int block
 Mat otsu_threshold(Mat image, int gauss_size);
 
 //Formato del fichero de aprendizaje:
-//<nombre_de_la_figura>;<n>;<media1>;<varianza1>;<media2>;<varianza2>;<media3>;<varianza3>;<media4>;<varianza4>;<media5>;<varianza5>
+//<nombre_de_la_figura>;<n>;<media1>;<varianza1>;<varianza_estimada1>;<media2>;...<varianza_estimada5>
 //<nombre_de_la_figura2>;...
 //...
 // Siendo 1) area 2) perimetro 3) momento1 4) momento2 5) momento3
@@ -47,6 +48,16 @@ int main(int argc, char** argv){
   string fich_name, obj_name;
   fich_name = PATH + argv[1];
   obj_name = argv[2];
+  //fich_name = PATH + "rectangulo5.pgm";
+  //obj_name = "rectangulo";
+
+  // Lee el archivo a aprender
+  Mat image = imread(samples::findFile(fich_name), IMREAD_GRAYSCALE);
+  if(image.empty()){
+    printf("Error opening image: %s\n", fich_name.c_str());
+    return EXIT_FAILURE;
+  }
+  imshow("Image to learn", image);
 
   std::ifstream objects(PATH + DATA_NAME);
 
@@ -110,14 +121,6 @@ int main(int argc, char** argv){
     required_Class.erase(0, pos + 1);
   }
 
-  // Lee el archivo a aprender
-  Mat image = imread(samples::findFile(fich_name), IMREAD_GRAYSCALE);
-  if (image.empty()){
-    printf("Error opening image: %s\n", fich_name.c_str());
-    return EXIT_FAILURE;
-  }
-  imshow("Image to learn", image);
-
   Mat otsu = otsu_threshold(image, 3);
   //Mat otsu =
   //  adapt_mean_threshold(image, 7, THRESH_BINARY_INV, 51, 5);
@@ -141,68 +144,85 @@ int main(int argc, char** argv){
   }
 
   Moments mu = moments(contours[theBiggest]); // Los momentos
-  double huMoments[3];
+  double huMoments[7];
   HuMoments(mu, huMoments);
 
   // Para evitar que se pierda tanta informacion al operar con valores minusculos,
   // mejor trabajar con escalas logaritmicas:
-  for (int i = 0; i < 3; i++){
-    huMoments[i] = -1 * copysign(1.0, huMoments[i]) * log10(abs(huMoments[i]));
-  }
+  //for (int i = 0; i < 3; i++){
+  //  huMoments[i] = -1 * copysign(1.0, huMoments[i]) * log10(abs(huMoments[i]));
+  //}
 
   float area = maxArea;
   float perim = arcLength(contours[theBiggest], true);
 
   // El primer campo es el numero de elementos
   if (data[0] == 0){
-    cout << "hola hokita" << endl;
     data[0] = 1; // Numero de muestras
     data[1] = area; // Media del area
     data[2] = 0; // Varianza del area
-    data[3] = perim; // Media del perimetro
-    data[4] = 0; // Varianza del perimetro
-    data[5] = huMoments[0]; // Media del primer momento Hu
-    data[6] = 0; // Varianza del primer momento Hu
-    data[7] = huMoments[1]; // Media del segundo momento Hu
-    data[8] = 0; // Varianza del segundo momento Hu
-    data[9] = huMoments[2]; // Media del tercer momento Hu
-    data[10] = 0; // Varianza del tercer momento Hu
+    data[3] = 0; // Varianza estimada del area
+    data[4] = perim; // Media del perimetro
+    data[5] = 0; // Varianza del perimetro
+    data[6] = 0; // Varianza estimada del perimetro
+    data[7] = huMoments[0]; // Media del primer momento Hu
+    data[8] = 0; // Varianza del primer momento Hu
+    data[9] = 0; // Varianza estimada del primer momento Hu
+    data[10] = huMoments[1]; // Media del segundo momento Hu
+    data[11] = 0; // Varianza del segundo momento Hu
+    data[12] = 0; // Varianza estimada del segundo momento Hu
+    data[13] = huMoments[2]; // Media del tercer momento Hu
+    data[14] = 0; // Varianza del tercer momento Hu
+    data[15] = 0; // Varianza estimada del tercer momento Hu
   }else{
-    cout << "adiosito" << endl;
-    // Numero muestras
+    // Numero de muestras
     data[0]++;
     cout << "muestras: " << data[0] << endl;
-    // Media del area
-    cout << "media anterior: " << data[1] << " area obtenida: " << area << endl;
-    data[1] = (data[1] * (data[0] - 1) + area) / data[0];
-    cout << "media area: " << data[1] << endl;
-    // Varianza del area
-    data[2] = (data[2] * (data[0] - 1) + pow((area - data[1]), 2)) / data[0];
+    // Numerador de medias del area
+    data[1] = data[1] + area;
+    cout << "Sumatorio area: " << data[1] << endl;
+    // Numerador de varianzas del area
+    data[2] = data[2] + pow((area - data[1] / data[0]), 2);
     cout << "var area: " << data[2] << endl;
-    // Media del perimetro
-    data[3] = (data[3] * (data[0] - 1) + perim) / data[0];
-    cout << "media perim: " << data[3] << endl;
-    // Varianza del perimetro
-    data[4] = (data[4] * (data[0] - 1) + pow((perim - data[3]), 2)) / data[0];
-    cout << "var perim: " << data[4] << endl;
-    // Media del primer momento Hu
-    data[5] = (data[5] * (data[0] - 1) + huMoments[0]) / data[0];
-    cout << "media hu1: " << data[5] << endl;
-    // Varianza del primer momento Hu
-    data[6] = (data[6] * (data[0] - 1) + pow((huMoments[0] - data[5]), 2)) / data[0];
-    cout << "var hu1: " << data[6] << endl;
-    // Media del segundo momento Hu
-    data[7] = (data[7] * (data[0] - 1) + huMoments[1]) / data[0];
-    cout << "media hu2: " << data[7] << endl;
-    // Varianza del segundo momento Hu
-    data[8] = (data[8] * (data[0] - 1) + pow((huMoments[1] - data[7]), 2)) / data[0];
-    cout << "var hu2: " << data[8] << endl;
-    // Media del tercer momento Hu
-    data[9] = (data[9] * (data[0] - 1) + huMoments[2]) / data[0];
-    cout << "media hu3: " << data[9] << endl;
-    // Varianza del tercer momento Hu
-    data[10] = (data[10] * (data[0] - 1) + pow((huMoments[2] - data[9]), 2)) / data[0];
-    cout << "var hu3: " << data[10] << endl;
+    // Numerador de varianzas estimadas del area
+    data[3] = pow((data[1] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * pow((data[2] / (data[0] - 1)), 2);
+    cout << "var est area: " << data[3] << endl;
+    // Numerador de medias del perimetro
+    data[4] = data[4] + perim;
+    cout << "media perim: " << data[4] << endl;
+    // Numerador de varianzas del perimetro
+    data[5] = data[5] + pow((perim - data[4] / data[0]), 2);
+    cout << "var perim: " << data[5] << endl;
+    // Numerador de varianzas estimadas del perimetro
+    data[6] = pow((data[4] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * pow((data[5] / (data[0] - 1)), 2);
+    cout << "var est perim: " << data[6] << endl;
+    // Numerador de medias del primer momento Hu
+    data[7] = data[7] + huMoments[0];
+    cout << "media hu1: " << data[7] << endl;
+    // Numerador de varianzas del primer momento Hu
+    data[8] = data[8] + pow((huMoments[0] - data[7] / data[0]), 2);
+    cout << "var hu1: " << data[8] << endl;
+    // Numerador de varianzas estimadas del primer momento Hu
+    data[9] = pow((data[7] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * pow((data[8] / (data[0] - 1)), 2);
+    cout << "var est hu1: " << data[9] << endl;
+    // Numerador de medias del segundo momento Hu
+    data[10] = data[10] + huMoments[1];
+    cout << "media hu2: " << data[10] << endl;
+    // Numerador de varianzas del segundo momento Hu
+    data[11] = data[11] + pow((huMoments[1] - data[10] / data[0]), 2);
+    cout << "var hu2: " << data[11] << endl;
+    // Numerador de varianzas estimadas del segundo momento Hu
+    data[12] = pow((data[10] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * pow((data[11] / (data[0] - 1)), 2);
+    cout << "var est hu2: " << data[12] << endl;
+    // Numerador de medias del tercer momento Hu
+    data[13] = data[13] + huMoments[2];
+    cout << "media hu3: " << data[13] << endl;
+    // Numerador de varianzas del tercer momento Hu
+    data[14] = data[14] + pow((huMoments[2] - data[13] / data[0]), 2);
+    cout << "var hu3: " << data[14] << endl;
+    // Numerador de varianzas estimadas del tercer momento Hu
+    data[15] = pow((data[13] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * pow((data[14] / (data[0] - 1)), 2);
+    cout << "var est hu3: " << data[15] << endl;
   }
 
   // Guarda la info en el fichero objetos

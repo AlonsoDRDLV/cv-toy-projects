@@ -16,13 +16,13 @@ using std::cout;
 using std::endl;
 using namespace cv;
 
-const string PATH = "C:\\Users\\AlonsoDRDLV\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
+const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
 const string DATA_NAME = "objetos.txt";
 const int MIN_AREA = 100;
 const int MIN_PERIM = 100;
 const int HU_MOMENTS = 3;
 const int NUM_DESCRIPTORS = 5;
-const int NUM_FIELDS = NUM_DESCRIPTORS * 2 + 2;
+const int NUM_FIELDS = NUM_DESCRIPTORS * 3 + 2;
 const int MIN_LENGTH_LINE = NUM_FIELDS;
 const double chi_square_value = 11.07; //para grado de libertad = NUM_DESCRIPTORS y alfa = 0.05
 
@@ -74,14 +74,14 @@ int main(int argc, char** argv){
           n.push_back(stoi(token));
         }else if((i % 3) == 2){
           //soy la buena, descomentame cuando compruebes que lee bien
-          //means_aux.push_back(stod(token)/n.[n.size()-1]);
-          means_aux.push_back(stod(token)); 
+          means_aux.push_back(stod(token)/n[n.size() - 1]);
+          //means_aux.push_back(stod(token)); 
         }else if((i % 3) == 0) {
-          //variances_aux.push_back(stod(token)/n.[n.size()-1]);
-          variances_aux.push_back(stod(token));
+          variances_aux.push_back(stod(token)/n[n.size() - 1]);
+          //variances_aux.push_back(stod(token));
         }else if ((i % 3) == 1) {
-          //estimated_variances_aux.push_back(stod(token)/n.[n.size()-1]);
-          estimated_variances_aux.push_back(stod(token));
+          estimated_variances_aux.push_back(stod(token)/n[n.size() - 1]);
+          //estimated_variances_aux.push_back(stod(token));
         }
       }
       //borrame despues de comprobar que va
@@ -155,8 +155,8 @@ int main(int argc, char** argv){
     double huMoments[7];
     HuMoments(mu, huMoments);
     for (int moment = 0; moment < HU_MOMENTS; moment++){
-      huMoments[moment] = -1 * copysign(1.0, huMoments[moment]) 
-          * log10(abs(huMoments[moment]));
+      //huMoments[moment] = -1 * copysign(1.0, huMoments[moment]) 
+      //    * log10(abs(huMoments[moment]));
       v_aux.push_back(huMoments[moment]);
     }
     detected_obj_descriptors.push_back(v_aux);
@@ -174,9 +174,8 @@ int main(int argc, char** argv){
         double mean, variance, descriptor;
         descriptor = detected_obj_descriptors[i_obj][i_desc];
         mean = means[i_class][i_desc];
-        variance = variances[i_class][i_desc];
+        variance = estimated_variances[i_class][i_desc];
         cout << mean << " " << variance << " i class " << i_class << " i_desc " << i_desc << "     ";
-        if (variance == 0) variance = 1; //evitar divisiones por 0
         //cout << i_class << "  descriptor: " << descriptor << "  media: " << mean << "  varianza: " << variance << endl;
         distance += pow((descriptor - mean), 2) / variance;
       }
@@ -187,7 +186,6 @@ int main(int argc, char** argv){
   }
 
   // Checkear distancias
-  
   for (vector<double> a : mahalanobis_distances){
     int i = 0;
     for (double b : a){
