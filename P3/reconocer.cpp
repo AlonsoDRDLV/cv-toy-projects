@@ -72,12 +72,16 @@ int main(int argc, char** argv){
           classes.push_back(token);
         }else if(i == 1){
           n.push_back(stoi(token));
-        }else if((i % 3) == 2){          
-          means_aux.push_back(stod(token)/n.[n.size()-1]);          
+        }else if((i % 3) == 2){
+          //soy la buena, descomentame cuando compruebes que lee bien
+          //means_aux.push_back(stod(token)/n.[n.size()-1]);
+          means_aux.push_back(stod(token)); 
         }else if((i % 3) == 0) {
-          variances_aux.push_back(stod(token)/n.[n.size()-1]);
+          //variances_aux.push_back(stod(token)/n.[n.size()-1]);
+          variances_aux.push_back(stod(token));
         }else if ((i % 3) == 1) {
-          estimated_variances_aux.push_back(stod(token)/n.[n.size() - 1]);
+          //estimated_variances_aux.push_back(stod(token)/n.[n.size()-1]);
+          estimated_variances_aux.push_back(stod(token));
         }
       }
       //borrame despues de comprobar que va
