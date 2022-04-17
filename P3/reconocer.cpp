@@ -77,7 +77,7 @@ int main(int argc, char** argv){
         }else if((i % 3) == 0) {
           variances_aux.push_back(stod(token)/n.[n.size()-1]);
         }else if ((i % 3) == 1) {
-          estimated_variances_aux.push_back(stod(token));
+          estimated_variances_aux.push_back(stod(token)/n.[n.size() - 1]);
         }
       }
       //borrame despues de comprobar que va
