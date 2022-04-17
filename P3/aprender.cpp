@@ -44,12 +44,9 @@ int main(int argc, char** argv){
   }
 
   // Lectura de parametros
-  string fich_name = argv[1];
-  string obj_name = argv[2];
-  
-  fich_name = PATH + "circulo5.pgm";
-  //fich_name = PATH + fich_name;
-
+  string fich_name, obj_name;
+  fich_name = PATH + argv[1];
+  obj_name = argv[2];
 
   std::ifstream objects(PATH + DATA_NAME);
 

@@ -97,18 +97,18 @@ int main(int argc, char** argv){
   Mat otsu = otsu_threshold(image, 3);
   imshow("Image otsurized", otsu);
 
-  Mat canny;
+  Mat canny; // Ni siquiera se usaba esto en ningun momento
   Canny(otsu, canny, 100, 200);
+  // Pero a mi compa le gusta pensar que si asi que lo dejo
 
   // ANTES:
   //findContours(canny, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
   // DESPUÉS:
   vector<vector<Point>> contours;
-  vector<vector<Point>> aux;
+  vector<vector<Point>> contour;
   // Saca la línea azul esa fea a la izquierda, tengo que ver cómo retirarla
   Mat labelImage(otsu.size(), CV_32S);
   int nLabels = connectedComponents(otsu, labelImage, 8);
-  cout << labelImage << endl;
   Mat* comp = new Mat[nLabels];
   for(int i = 1; i < nLabels; i++){
     comp[i - 1] = Mat(otsu.size(), CV_8UC1, Scalar(0));
@@ -123,21 +123,21 @@ int main(int argc, char** argv){
       }
     }
     imshow("Connected Components " + to_string(i - 1), comp[i - 1]);
-    findContours(comp[i - 1], aux, RETR_TREE, CHAIN_APPROX_SIMPLE);
-    if ((contourArea(aux) > MIN_AREA) && (arcLength(aux, true) > MIN_PERIM)){
-      cout << contourArea(aux) << " " << arcLength(aux, true) << endl;
-      contours.insert(contours.end(), aux.begin(), aux.end());
+    findContours(comp[i - 1], contour, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    if ((contourArea(contour[0]) > MIN_AREA) && (arcLength(contour[0], true) > MIN_PERIM)){
+      //cout << contourArea(contour[0]) << " " << arcLength(contour[0], true) << endl;
+      contours.push_back(contour[0]);
     }
   }
 
   // Saca los valores de los descriptores de todos los objetos detectados
   vector<vector<double>> detected_obj_descriptors; //area, perimetro, momentos 
   vector<double> v_aux;
-  for (int i = 0; i < contours.size() - 1; i++){
+  for (int i = 0; i < contours.size(); i++){
     v_aux.push_back(contourArea(contours[i]));
     v_aux.push_back(arcLength(contours[i], true));
     Moments mu = moments(contours[i]);  
-    double huMoments[HU_MOMENTS] = {0.0, 0.0, 0.0};
+    double huMoments[7];
     HuMoments(mu, huMoments);
     for (int moment = 0; moment < HU_MOMENTS; moment++){
       huMoments[moment] = -1 * copysign(1.0, huMoments[moment]) 
@@ -161,17 +161,23 @@ int main(int argc, char** argv){
         mean = means[i_class][i_desc];
         variance = variances[i_class][i_desc];
         if (variance == 0) variance = 1; //evitar divisiones por 0
-        cout << i_class << "  descriptor: " << descriptor << "  media: " << mean << "  varianza: " << variance << endl;
+        //cout << i_class << "  descriptor: " << descriptor << "  media: " << mean << "  varianza: " << variance << endl;
         distance += pow((descriptor - mean), 2) / variance;
       }
       distances_to_classes.push_back(distance);
     }
     mahalanobis_distances.push_back(distances_to_classes);
   }
-  //checkear distancias (no salen bien haha)
+
+  // Checkear distancias
+  int i = 0;
   for (vector<double> a : mahalanobis_distances){
     for (double b : a){
       cout << "distance: " << b << " - ";
+      if (b < chi_square_value){
+        cout << classes[i];
+      }
+      i++;
     }
     cout << endl;
   }
