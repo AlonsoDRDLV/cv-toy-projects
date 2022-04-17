@@ -18,7 +18,7 @@ using std::cout;
 using std::endl;
 using namespace cv;
 
-const string PATH = "C:\\Users\\AlonsoDRDLV\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
+const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
 const string DATA_NAME = "objetos.txt";
 const int BUFF_LENGTH = 1024;
 const int NUM_DESCRIPTORS = 5;
@@ -48,6 +48,8 @@ int main(int argc, char** argv){
   string obj_name = argv[2];
   
   fich_name = PATH + "circulo5.pgm";
+  //fich_name = PATH + fich_name;
+
 
   std::ifstream objects(PATH + DATA_NAME);
 
@@ -119,7 +121,7 @@ int main(int argc, char** argv){
   }
   imshow("Image to learn", image);
 
-  Mat otsu = otsu_threshold(image, 5);
+  Mat otsu = otsu_threshold(image, 3);
   //Mat otsu =
   //  adapt_mean_threshold(image, 7, THRESH_BINARY_INV, 51, 5);
   imshow("Image otsurized", otsu);
@@ -172,28 +174,38 @@ int main(int argc, char** argv){
     cout << "adiosito" << endl;
     // Numero muestras
     data[0]++;
+    cout << "muestras: " << data[0] << endl;
     // Media del area
     cout << "media anterior: " << data[1] << " area obtenida: " << area << endl;
     data[1] = (data[1] * (data[0] - 1) + area) / data[0];
-    cout << "media nueva: " << data[1] << endl;
+    cout << "media area: " << data[1] << endl;
     // Varianza del area
     data[2] = (data[2] * (data[0] - 1) + pow((area - data[1]), 2)) / data[0];
+    cout << "var area: " << data[2] << endl;
     // Media del perimetro
     data[3] = (data[3] * (data[0] - 1) + perim) / data[0];
+    cout << "media perim: " << data[3] << endl;
     // Varianza del perimetro
     data[4] = (data[4] * (data[0] - 1) + pow((perim - data[3]), 2)) / data[0];
+    cout << "var perim: " << data[4] << endl;
     // Media del primer momento Hu
     data[5] = (data[5] * (data[0] - 1) + huMoments[0]) / data[0];
+    cout << "media hu1: " << data[5] << endl;
     // Varianza del primer momento Hu
     data[6] = (data[6] * (data[0] - 1) + pow((huMoments[0] - data[5]), 2)) / data[0];
+    cout << "var hu1: " << data[6] << endl;
     // Media del segundo momento Hu
     data[7] = (data[7] * (data[0] - 1) + huMoments[1]) / data[0];
+    cout << "media hu2: " << data[7] << endl;
     // Varianza del segundo momento Hu
     data[8] = (data[8] * (data[0] - 1) + pow((huMoments[1] - data[7]), 2)) / data[0];
+    cout << "var hu2: " << data[8] << endl;
     // Media del tercer momento Hu
     data[9] = (data[9] * (data[0] - 1) + huMoments[2]) / data[0];
+    cout << "media hu3: " << data[9] << endl;
     // Varianza del tercer momento Hu
     data[10] = (data[10] * (data[0] - 1) + pow((huMoments[2] - data[9]), 2)) / data[0];
+    cout << "var hu3: " << data[10] << endl;
   }
 
   // Guarda la info en el fichero objetos
@@ -216,8 +228,7 @@ int main(int argc, char** argv){
 Mat adapt_gauss_threshold(Mat image, int blur_size, int threshold_type, int block_size, 
     double c){
   Mat result = image.clone();
-  cvtColor(result, result, COLOR_BGR2GRAY);
-  medianBlur(result, result, 5);
+  medianBlur(result, result, blur_size);
   adaptiveThreshold(result, result, 255, ADAPTIVE_THRESH_GAUSSIAN_C, threshold_type, 
       block_size, c);
   return result;
@@ -226,8 +237,7 @@ Mat adapt_gauss_threshold(Mat image, int blur_size, int threshold_type, int bloc
 Mat adapt_mean_threshold(Mat image, int blur_size, int threshold_type, int block_size,
   double c){
   Mat result = image.clone();
-  cvtColor(result, result, COLOR_BGR2GRAY);
-  medianBlur(result, result, 5);
+  medianBlur(result, result, blur_size);
   adaptiveThreshold(result, result, 255, ADAPTIVE_THRESH_MEAN_C, threshold_type,
       block_size, c);
   return result;
@@ -235,8 +245,7 @@ Mat adapt_mean_threshold(Mat image, int blur_size, int threshold_type, int block
 
 Mat otsu_threshold(Mat image, int gauss_size){
   Mat result = image.clone();
-  //cvtColor(result, result, COLOR_BGR2GRAY);
-  //GaussianBlur(result, result, Size(gauss_size, gauss_size), 0, 0);
+  GaussianBlur(result, result, Size(gauss_size, gauss_size), 0, 0);
   threshold(result, result, 0, 255, THRESH_BINARY_INV + THRESH_OTSU);
   return result;
 }

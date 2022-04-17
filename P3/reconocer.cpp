@@ -16,13 +16,15 @@ using std::cout;
 using std::endl;
 using namespace cv;
 
-const string PATH = "C:\\Users\\AlonsoDRDLV\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
+const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
 const string DATA_NAME = "objetos.txt";
+const int MIN_AREA = 100;
+const int MIN_PERIM = 100;
 const int HU_MOMENTS = 3;
 const int NUM_DESCRIPTORS = 5;
 const int NUM_FIELDS = NUM_DESCRIPTORS * 2 + 2;
 const int MIN_LENGTH_LINE = NUM_FIELDS;
-const double chi_square_value = 11.07;//para grado de libertad = NUM_DESCRIPTORS y alfa = 0.05
+const double chi_square_value = 11.07; //para grado de libertad = NUM_DESCRIPTORS y alfa = 0.05
 
 Mat adapt_gauss_threshold(Mat image, int blur_size, int threshold_type, int block_size, 
     double c);
@@ -84,7 +86,7 @@ int main(int argc, char** argv){
   }
 
   // Lee la imagen a clasificar
-  Mat image = imread(samples::findFile(fich_name), IMREAD_COLOR);
+  Mat image = imread(samples::findFile(fich_name), IMREAD_GRAYSCALE);
   if(image.empty()){
     printf("Error opening image: %s\n", fich_name.c_str());
     return EXIT_FAILURE;
@@ -92,26 +94,21 @@ int main(int argc, char** argv){
   imshow("Image to learn", image);
 
   // Aplica thresholding de Otsu para pasarla a monocromo: fondo-negro, resto-blanco
-  Mat otsu = otsu_threshold(image, 13);
+  Mat otsu = otsu_threshold(image, 3);
   imshow("Image otsurized", otsu);
 
   Mat canny;
   Canny(otsu, canny, 100, 200);
-  vector<vector<Point>> contours;
+
   // ANTES:
   //findContours(canny, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
   // DESPUÉS:
+  vector<vector<Point>> contours;
   vector<vector<Point>> aux;
   // Saca la línea azul esa fea a la izquierda, tengo que ver cómo retirarla
   Mat labelImage(otsu.size(), CV_32S);
   int nLabels = connectedComponents(otsu, labelImage, 8);
-  vector<Vec3b> colors(nLabels);
-  colors[0] = Vec3b(0, 0, 0);//background
-
-  for(int label = 1; label < nLabels; ++label){
-    colors[label] = Vec3b((rand() & 255), (rand() & 255), (rand() & 255));
-  }
-
+  cout << labelImage << endl;
   Mat* comp = new Mat[nLabels];
   for(int i = 1; i < nLabels; i++){
     comp[i - 1] = Mat(otsu.size(), CV_8UC1, Scalar(0));
@@ -120,21 +117,23 @@ int main(int argc, char** argv){
         int pixel = labelImage.at<int>(r, c);
         if(pixel == i){
           comp[i - 1].at<uchar>(r, c) = 255;
-        }
-        else{
+        }else{
           comp[i - 1].at<uchar>(r, c) = 0;
         }
       }
     }
-    imshow("Connected Components " + to_string(i), comp[i - 1]);
+    imshow("Connected Components " + to_string(i - 1), comp[i - 1]);
     findContours(comp[i - 1], aux, RETR_TREE, CHAIN_APPROX_SIMPLE);
-    contours.insert(contours.end(), aux.begin(), aux.end());
+    if ((contourArea(aux) > MIN_AREA) && (arcLength(aux, true) > MIN_PERIM)){
+      cout << contourArea(aux) << " " << arcLength(aux, true) << endl;
+      contours.insert(contours.end(), aux.begin(), aux.end());
+    }
   }
 
   // Saca los valores de los descriptores de todos los objetos detectados
   vector<vector<double>> detected_obj_descriptors; //area, perimetro, momentos 
   vector<double> v_aux;
-  for (int i = 0; i < contours.size(); i++){
+  for (int i = 0; i < contours.size() - 1; i++){
     v_aux.push_back(contourArea(contours[i]));
     v_aux.push_back(arcLength(contours[i], true));
     Moments mu = moments(contours[i]);  
@@ -170,8 +169,8 @@ int main(int argc, char** argv){
     mahalanobis_distances.push_back(distances_to_classes);
   }
   //checkear distancias (no salen bien haha)
-  for (vector<double> a : mahalanobis_distances) {
-    for (double b : a) {
+  for (vector<double> a : mahalanobis_distances){
+    for (double b : a){
       cout << "distance: " << b << " - ";
     }
     cout << endl;
@@ -223,8 +222,7 @@ int main(int argc, char** argv){
 Mat adapt_gauss_threshold(Mat image, int blur_size, int threshold_type, int block_size, 
     double c){
   Mat result = image.clone();
-  cvtColor(result, result, COLOR_BGR2GRAY);
-  medianBlur(result, result, 5);
+  medianBlur(result, result, blur_size);
   adaptiveThreshold(result, result, 255, ADAPTIVE_THRESH_GAUSSIAN_C, threshold_type, 
       block_size, c);
   result = Mat(result.size(), result.type(), 255) - result;
@@ -234,8 +232,7 @@ Mat adapt_gauss_threshold(Mat image, int blur_size, int threshold_type, int bloc
 Mat adapt_mean_threshold(Mat image, int blur_size, int threshold_type, int block_size,
   double c){
   Mat result = image.clone();
-  cvtColor(result, result, COLOR_BGR2GRAY);
-  medianBlur(result, result, 5);
+  medianBlur(result, result, blur_size);
   adaptiveThreshold(result, result, 255, ADAPTIVE_THRESH_MEAN_C, threshold_type,
       block_size, c);
   result = Mat(result.size(), result.type(), 255) - result;
@@ -244,7 +241,6 @@ Mat adapt_mean_threshold(Mat image, int blur_size, int threshold_type, int block
 
 Mat otsu_threshold(Mat image, int gauss_size){
   Mat result = image.clone();
-  cvtColor(result, result, COLOR_BGR2GRAY);
   GaussianBlur(result, result, Size(gauss_size, gauss_size), 0, 0);
   threshold(result, result, 0, 255, THRESH_BINARY + THRESH_OTSU);
   result = Mat(result.size(), result.type(), 255) - result;
