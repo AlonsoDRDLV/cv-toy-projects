@@ -16,7 +16,7 @@ using std::cout;
 using std::endl;
 using namespace cv;
 
-const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
+const string PATH = "C:\\Users\\AlonsoDRDLV\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
 const string DATA_NAME = "objetos.txt";
 const int MIN_AREA = 100;
 const int MIN_PERIM = 100;
@@ -56,14 +56,14 @@ int main(int argc, char** argv){
   vector<int> n; //numero muestras con las que se ha entrenado al modelo para una clase concreta
   vector<vector<double>> means; //medias de los descriptores de cada clase
   vector<vector<double>> variances; //varianzas de los descriptores de cada clase
-  vector<double> means_aux;
-  vector<double> variances_aux;
-
+  
   std::ifstream objects(objects_name);
 
   if (objects.is_open()){ // Se encuentran datos anteriores
     for (string line; std::getline(objects, line); ){
       std::stringstream line_stream(line);
+      vector<double> means_aux;
+      vector<double> variances_aux;
       int i = 0;
       for (string token; std::getline(line_stream, token, ';'); i++){
         if(i == 0){
@@ -76,6 +76,7 @@ int main(int argc, char** argv){
           variances_aux.push_back(stod(token));
         }
       }
+      cout << line << endl;
       means.push_back(means_aux);
       variances.push_back(variances_aux);
     }
@@ -160,22 +161,25 @@ int main(int argc, char** argv){
         descriptor = detected_obj_descriptors[i_obj][i_desc];
         mean = means[i_class][i_desc];
         variance = variances[i_class][i_desc];
+        cout << mean << " " << variance << " i class " << i_class << " i_desc " << i_desc << "     ";
         if (variance == 0) variance = 1; //evitar divisiones por 0
         //cout << i_class << "  descriptor: " << descriptor << "  media: " << mean << "  varianza: " << variance << endl;
         distance += pow((descriptor - mean), 2) / variance;
       }
       distances_to_classes.push_back(distance);
+      cout << endl;
     }
     mahalanobis_distances.push_back(distances_to_classes);
   }
 
   // Checkear distancias
-  int i = 0;
+  
   for (vector<double> a : mahalanobis_distances){
+    int i = 0;
     for (double b : a){
       cout << "distance: " << b << " - ";
       if (b < chi_square_value){
-        cout << classes[i];
+        cout << classes[i]; 
       }
       i++;
     }
