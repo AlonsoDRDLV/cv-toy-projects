@@ -18,7 +18,7 @@ using std::cout;
 using std::endl;
 using namespace cv;
 
-const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
+const string PATH = "C:\\Users\\AlonsoDRDLV\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
 const string DATA_NAME = "objetos.txt";
 const int BUFF_LENGTH = 1024;
 const int NUM_DESCRIPTORS = 5;
@@ -47,7 +47,7 @@ int main(int argc, char** argv){
   string fich_name = argv[1];
   string obj_name = argv[2];
   
-  fich_name = PATH + "circulo1.pgm";
+  fich_name = PATH + "circulo5.pgm";
 
   std::ifstream objects(PATH + DATA_NAME);
 
@@ -112,7 +112,7 @@ int main(int argc, char** argv){
   }
 
   // Lee el archivo a aprender
-  Mat image = imread(samples::findFile(fich_name), IMREAD_COLOR);
+  Mat image = imread(samples::findFile(fich_name), IMREAD_GRAYSCALE);
   if (image.empty()){
     printf("Error opening image: %s\n", fich_name.c_str());
     return EXIT_FAILURE;
@@ -124,10 +124,10 @@ int main(int argc, char** argv){
   //  adapt_mean_threshold(image, 7, THRESH_BINARY_INV, 51, 5);
   imshow("Image otsurized", otsu);
 
-  Mat canny;
-  Canny(otsu, canny, 100, 200);
+  //Mat canny;
+  //Canny(otsu, canny, 100, 200);
   vector<vector<Point>> contours;
-  findContours(canny, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
+  findContours(otsu, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
 
   // Descarta basura
   float maxArea = 0;
@@ -156,6 +156,7 @@ int main(int argc, char** argv){
 
   // El primer campo es el numero de elementos
   if (data[0] == 0){
+    cout << "hola hokita" << endl;
     data[0] = 1; // Numero de muestras
     data[1] = area; // Media del area
     data[2] = 0; // Varianza del area
@@ -168,10 +169,13 @@ int main(int argc, char** argv){
     data[9] = huMoments[2]; // Media del tercer momento Hu
     data[10] = 0; // Varianza del tercer momento Hu
   }else{
+    cout << "adiosito" << endl;
     // Numero muestras
     data[0]++;
     // Media del area
+    cout << "media anterior: " << data[1] << " area obtenida: " << area << endl;
     data[1] = (data[1] * (data[0] - 1) + area) / data[0];
+    cout << "media nueva: " << data[1] << endl;
     // Varianza del area
     data[2] = (data[2] * (data[0] - 1) + pow((area - data[1]), 2)) / data[0];
     // Media del perimetro
@@ -231,8 +235,8 @@ Mat adapt_mean_threshold(Mat image, int blur_size, int threshold_type, int block
 
 Mat otsu_threshold(Mat image, int gauss_size){
   Mat result = image.clone();
-  cvtColor(result, result, COLOR_BGR2GRAY);
-  GaussianBlur(result, result, Size(gauss_size, gauss_size), 0, 0);
+  //cvtColor(result, result, COLOR_BGR2GRAY);
+  //GaussianBlur(result, result, Size(gauss_size, gauss_size), 0, 0);
   threshold(result, result, 0, 255, THRESH_BINARY_INV + THRESH_OTSU);
   return result;
 }
