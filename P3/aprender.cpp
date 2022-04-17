@@ -185,6 +185,7 @@ int main(int argc, char** argv){
     data[2] = data[2] + pow((area - data[1] / data[0]), 2);
     cout << "var area: " << data[2] << endl;
     // Numerador de varianzas estimadas del area
+    //                                                                       por que el cuadrado?
     data[3] = pow((data[1] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * pow((data[2] / (data[0] - 1)), 2);
     cout << "var est area: " << data[3] << endl;
     // Numerador de medias del perimetro
