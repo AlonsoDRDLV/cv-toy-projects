@@ -18,7 +18,7 @@ using std::cout;
 using std::endl;
 using namespace cv;
 
-const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
+const string PATH = "C:\\Users\\AlonsoDRDLV\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
 const string DATA_NAME = "objetos.txt";
 const double VAR_PERCENTAGE = 0.02;
 const int BUFF_LENGTH = 1024;
@@ -33,10 +33,19 @@ Mat adapt_mean_threshold(Mat image, int blur_size, int threshold_type, int block
 Mat otsu_threshold(Mat image, int gauss_size);
 
 //si no existe el fichero devuelve false
-void read_data(const string& file_name, double* data, vector<string>& lines);
+void read_data(const string& file_name, const string& obj_name, double* data, vector<string>& lines);
 
 //filtra los contornos detectados que no se corresponden con el objeto
 int filter_contours(const vector<vector<Point>> contours);
+
+void calculate_descriptors(const int theBiggest, const vector<vector<Point>> contours,
+  float& area, float& perim, double huMoments[]);
+
+//Acumular numeradores de areas, perimetros y momentos
+void train_model(double data[], const float area, const float perim, const double huMoments[]);
+
+void write_data(const string& model_file_name, const string& obj_name,
+  vector<string> lines, const double data[]);
 
 //Formato del fichero de aprendizaje:
 //<nombre_de_la_figura>;<n>;<media1>;<varianza1>;<varianza_estimada1>;<media2>;...<varianza_estimada5>
@@ -69,7 +78,7 @@ int main(int argc, char** argv){
   vector<string> lines;
   double data[NUM_FIELDS];
   string model_file_name = PATH + DATA_NAME;
-  read_data(model_file_name, data, lines);
+  read_data(model_file_name, obj_name, data, lines);
 
   //Otsu threshold
   Mat otsu = otsu_threshold(image, 3);
@@ -87,87 +96,12 @@ int main(int argc, char** argv){
   
   float area, perim;
   double huMoments[7];
+  calculate_descriptors(theBiggest, contours, area, perim, huMoments);
   
-  // El primer campo es el numero de elementos
-  if (data[0] == 0){
-    data[0] = 1; // Numero de muestras
-    data[1] = area; // Media del area
-    data[2] = 0; // Varianza del area
-    data[3] = 0; // Varianza estimada del area
-    data[4] = perim; // Media del perimetro
-    data[5] = 0; // Varianza del perimetro
-    data[6] = 0; // Varianza estimada del perimetro
-    data[7] = huMoments[0]; // Media del primer momento Hu
-    data[8] = 0; // Varianza del primer momento Hu
-    data[9] = 0; // Varianza estimada del primer momento Hu
-    data[10] = huMoments[1]; // Media del segundo momento Hu
-    data[11] = 0; // Varianza del segundo momento Hu
-    data[12] = 0; // Varianza estimada del segundo momento Hu
-    data[13] = huMoments[2]; // Media del tercer momento Hu
-    data[14] = 0; // Varianza del tercer momento Hu
-    data[15] = 0; // Varianza estimada del tercer momento Hu
-  }else{
-    // Numero de muestras
-    data[0]++;
-    cout << "muestras: " << data[0] << endl;
-    // Numerador de medias del area
-    data[1] = data[1] + area;
-    cout << "Sumatorio area: " << data[1] << endl;
-    // Numerador de varianzas del area
-    data[2] = data[2] + pow((area - data[1] / data[0]), 2);
-    cout << "var area: " << data[2] << endl;
-    // Numerador de varianzas estimadas del area
-    data[3] = pow((data[1] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * data[2];
-    cout << "var est area: " << data[3] << endl;
-    // Numerador de medias del perimetro
-    data[4] = data[4] + perim;
-    cout << "media perim: " << data[4] << endl;
-    // Numerador de varianzas del perimetro
-    data[5] = data[5] + pow((perim - data[4] / data[0]), 2);
-    cout << "var perim: " << data[5] << endl;
-    // Numerador de varianzas estimadas del perimetro
-    data[6] = pow((data[4] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * data[5];
-    cout << "var est perim: " << data[6] << endl;
-    // Numerador de medias del primer momento Hu
-    data[7] = data[7] + huMoments[0];
-    cout << "media hu1: " << data[7] << endl;
-    // Numerador de varianzas del primer momento Hu
-    data[8] = data[8] + pow((huMoments[0] - data[7] / data[0]), 2);
-    cout << "var hu1: " << data[8] << endl;
-    // Numerador de varianzas estimadas del primer momento Hu
-    data[9] = pow((data[7] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * data[8];
-    cout << "var est hu1: " << data[9] << endl;
-    // Numerador de medias del segundo momento Hu
-    data[10] = data[10] + huMoments[1];
-    cout << "media hu2: " << data[10] << endl;
-    // Numerador de varianzas del segundo momento Hu
-    data[11] = data[11] + pow((huMoments[1] - data[10] / data[0]), 2);
-    cout << "var hu2: " << data[11] << endl;
-    // Numerador de varianzas estimadas del segundo momento Hu
-    data[12] = pow((data[10] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * data[11];
-    cout << "var est hu2: " << data[12] << endl;
-    // Numerador de medias del tercer momento Hu
-    data[13] = data[13] + huMoments[2];
-    cout << "media hu3: " << data[13] << endl;
-    // Numerador de varianzas del tercer momento Hu
-    data[14] = data[14] + pow((huMoments[2] - data[13] / data[0]), 2);
-    cout << "var hu3: " << data[14] << endl;
-    // Numerador de varianzas estimadas del tercer momento Hu
-    data[15] = pow((data[13] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * data[14];
-    cout << "var est hu3: " << data[15] << endl;
-  }
-
+  train_model(data, area, perim, huMoments);
+  
   // Guarda la info en el fichero objetos
-  std::ofstream newObjects(PATH + DATA_NAME);
-  for (int i = 0; i < lines.size(); i++){
-    newObjects << lines[i] << endl;
-  }
-  newObjects << obj_name;
-  for (int i = 1; i < NUM_FIELDS; i++){
-    newObjects << ";" << data[i - 1];
-  }
-  newObjects << endl;
-  newObjects.close();
+  write_data(model_file_name, obj_name, lines, data);
 
   waitKey(0);
 
@@ -199,7 +133,7 @@ Mat otsu_threshold(Mat image, int gauss_size){
   return result;
 }
 
-void read_data(const string& file_name, double* data, vector<string>& lines){
+void read_data(const string& file_name, const string& obj_name, double* data, vector<string>& lines){
   std::ifstream objects(file_name);
 
   // Lee datos
@@ -283,4 +217,74 @@ void calculate_descriptors(const int theBiggest, const vector<vector<Point>> con
   perim = arcLength(contours[theBiggest], true);
   Moments mu = moments(contours[theBiggest]); // Los momentos
   HuMoments(mu, huMoments);
+}
+
+void train_model(double data[], const float area, const float perim, const double huMoments[]) {
+  // El primer campo es el numero de elementos
+  if (data[0] == 0) {
+    data[0] = 1; // Numero de muestras
+    data[1] = area; // Media del area
+    data[2] = 0; // Varianza del area
+    data[3] = 0; // Varianza estimada del area
+    data[4] = perim; // Media del perimetro
+    data[5] = 0; // Varianza del perimetro
+    data[6] = 0; // Varianza estimada del perimetro
+    data[7] = huMoments[0]; // Media del primer momento Hu
+    data[8] = 0; // Varianza del primer momento Hu
+    data[9] = 0; // Varianza estimada del primer momento Hu
+    data[10] = huMoments[1]; // Media del segundo momento Hu
+    data[11] = 0; // Varianza del segundo momento Hu
+    data[12] = 0; // Varianza estimada del segundo momento Hu
+    data[13] = huMoments[2]; // Media del tercer momento Hu
+    data[14] = 0; // Varianza del tercer momento Hu
+    data[15] = 0; // Varianza estimada del tercer momento Hu
+  }
+  else {
+    // Numero de muestras
+    data[0]++;
+    // Numerador de medias del area
+    data[1] = data[1] + area;
+    // Numerador de varianzas del area
+    data[2] = data[2] + pow((area - data[1] / data[0]), 2);
+    // Numerador de varianzas estimadas del area
+    data[3] = pow((data[1] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * data[2];
+    // Numerador de medias del perimetro
+    data[4] = data[4] + perim;
+    // Numerador de varianzas del perimetro
+    data[5] = data[5] + pow((perim - data[4] / data[0]), 2);
+    // Numerador de varianzas estimadas del perimetro
+    data[6] = pow((data[4] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * data[5];
+    // Numerador de medias del primer momento Hu
+    data[7] = data[7] + huMoments[0];
+    // Numerador de varianzas del primer momento Hu
+    data[8] = data[8] + pow((huMoments[0] - data[7] / data[0]), 2);
+    // Numerador de varianzas estimadas del primer momento Hu
+    data[9] = pow((data[7] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * data[8];
+    // Numerador de medias del segundo momento Hu
+    data[10] = data[10] + huMoments[1];
+    // Numerador de varianzas del segundo momento Hu
+    data[11] = data[11] + pow((huMoments[1] - data[10] / data[0]), 2);
+    // Numerador de varianzas estimadas del segundo momento Hu
+    data[12] = pow((data[10] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * data[11];
+    // Numerador de medias del tercer momento Hu
+    data[13] = data[13] + huMoments[2];
+    // Numerador de varianzas del tercer momento Hu
+    data[14] = data[14] + pow((huMoments[2] - data[13] / data[0]), 2);
+    // Numerador de varianzas estimadas del tercer momento Hu
+    data[15] = pow((data[13] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * data[14];
+  }
+}
+void write_data(const string& model_file_name, const string& obj_name, 
+  vector<string> lines, const double data[]) {
+  
+  std::ofstream newObjects(PATH + DATA_NAME);
+  for (int i = 0; i < lines.size(); i++) {
+    newObjects << lines[i] << endl;
+  }
+  newObjects << obj_name;
+  for (int i = 1; i < NUM_FIELDS; i++) {
+    newObjects << ";" << data[i - 1];
+  }
+  newObjects << endl;
+  newObjects.close();
 }
