@@ -32,6 +32,12 @@ Mat adapt_mean_threshold(Mat image, int blur_size, int threshold_type, int block
     double c);
 Mat otsu_threshold(Mat image, int gauss_size);
 
+//si no existe el fichero devuelve false
+void read_data(const string& file_name, double* data, vector<string>& lines);
+
+//filtra los contornos detectados que no se corresponden con el objeto
+int filter_contours(const vector<vector<Point>> contours);
+
 //Formato del fichero de aprendizaje:
 //<nombre_de_la_figura>;<n>;<media1>;<varianza1>;<varianza_estimada1>;<media2>;...<varianza_estimada5>
 //<nombre_de_la_figura2>;...
@@ -59,103 +65,29 @@ int main(int argc, char** argv){
   }
   imshow("Image to learn", image);
 
-  std::ifstream objects(PATH + DATA_NAME);
-
-  // Lee datos
-  char* buffer = new char[BUFF_LENGTH];
-  string buffer_s;
-  int readedCount;
-  double data[NUM_FIELDS];
+  //Leer el fichero del modelo
   vector<string> lines;
-  int pos;
+  double data[NUM_FIELDS];
+  string model_file_name = PATH + DATA_NAME;
+  read_data(model_file_name, data, lines);
 
-  if (objects.is_open()){ // Existen datos anteriores
-    do{
-      objects.read(buffer, BUFF_LENGTH);
-      readedCount = objects.gcount();
-      buffer_s = buffer_s + string(buffer).substr(0, readedCount);
-    }while(readedCount == BUFF_LENGTH);
-    // Los divide en lineas
-    pos = buffer_s.find("\n");
-    while (pos != string::npos){
-      if (pos > MIN_LENGTH_LINE){
-        lines.push_back(buffer_s.substr(0, pos));
-      }
-      buffer_s.erase(0, pos + 1);
-      pos = buffer_s.find("\n");
-    }
-    std::ofstream s(PATH + DATA_NAME, std::ofstream::trunc);
-    s.close();
-  }else{ // Primer objeto aprendido
-    cout << "objetos.txt not found, creating a new file\n";
-    std::ofstream s(PATH + DATA_NAME);
-    s.close();
-    data[0] = 0;
-  }
-  objects.close();
-
-
-  // Encuentra la clase afectada, o no!
-  int required = -1;
-  for (int i = 0; i < lines.size(); i++){
-    pos = lines[i].find(";");
-    if (lines[i].substr(0, pos) == obj_name){ // Encontrado
-      required = i;
-      break;
-    }
-  }
-
-  if (required == -1){ // No encontrado, crea nuevo
-    required = lines.size();
-    lines.push_back(obj_name + ";0;0;0;0;0;0;0;0;0;0;0");
-  }
-
-  // Lee datos de la clase afectada
-  string required_Class = lines[required];
-  lines.erase(lines.begin() + required);
-  pos = required_Class.find(";");
-  required_Class.erase(0, pos + 1);
-  for (int i = 0; i < NUM_FIELDS; i++){
-    pos = required_Class.find(";");
-    data[i] = stod(required_Class.substr(0, pos));
-    required_Class.erase(0, pos + 1);
-  }
-
+  //Otsu threshold
   Mat otsu = otsu_threshold(image, 3);
   //Mat otsu =
   //  adapt_mean_threshold(image, 7, THRESH_BINARY_INV, 51, 5);
   imshow("Image otsurized", otsu);
 
+  //Find contours
   //Mat canny;
   //Canny(otsu, canny, 100, 200);
   vector<vector<Point>> contours;
   findContours(otsu, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
 
-  // Descarta basura
-  float maxArea = 0;
-  float aux;
-  int theBiggest = 0;
-  for (int i = 0; i < contours.size(); i++){
-    aux = contourArea(contours[i]);
-    if (aux > maxArea){
-      theBiggest = i;
-      maxArea = aux;
-    }
-  }
-
-  Moments mu = moments(contours[theBiggest]); // Los momentos
+  int theBiggest = filter_contours(contours);
+  
+  float area, perim;
   double huMoments[7];
-  HuMoments(mu, huMoments);
-
-  // Para evitar que se pierda tanta informacion al operar con valores minusculos,
-  // mejor trabajar con escalas logaritmicas:
-  //for (int i = 0; i < 3; i++){
-  //  huMoments[i] = -1 * copysign(1.0, huMoments[i]) * log10(abs(huMoments[i]));
-  //}
-
-  float area = maxArea;
-  float perim = arcLength(contours[theBiggest], true);
-
+  
   // El primer campo es el numero de elementos
   if (data[0] == 0){
     data[0] = 1; // Numero de muestras
@@ -268,114 +200,88 @@ Mat otsu_threshold(Mat image, int gauss_size){
   return result;
 }
 
-/*
-PASOS 1, 2 y 3
-Mat image, copy, altered_image, opencv_image;
-string imagePath = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
-string imageName = imagePath + "reco1.pgm";
+void read_data(const string& file_name, double* data, vector<string>& lines){
+  std::ifstream objects(file_name);
 
-image = imread(samples::findFile(imageName), IMREAD_COLOR);
-if(image.empty()){
-  printf("Error opening image: %s\n", imageName.c_str());
-  return EXIT_FAILURE;
-}
-imshow("coso", image);
+  // Lee datos
+  char* buffer = new char[BUFF_LENGTH];
+  string buffer_s;
+  int readedCount;
 
-// Dice que lo que valoran en esta práctica es que hayamos descubierto todos los caminos para
-// resolver todo esto, imagino que vamos bien, al menos al principio, mi materia gris ya chof hoy
+  int pos;
 
-// Esta parte de los threshold está muy tocada para más o menos lo que creo que es, pero hay que
-// interpretar muy fuerte el enunciado para saber qué diablos quieren. . .
-// Aumentar block_size hace los contornos más finos
-// ¿Aumentar c reduce el ruido?
-// Gaussiano parece mejor por ahora
-// Como interesa el objeto igual es interesante coger grosor ancho y rellenar (teacher words)
-Mat adapt_mean =
-    adapt_mean_threshold(image, 7, THRESH_BINARY, 71, 2);
-imshow("adapt mean threshold", adapt_mean);
-Mat adapt_gauss =
-    adapt_gauss_threshold(image, 7, THRESH_BINARY, 131, 2);
-imshow("adapt gauss threshold", adapt_gauss);
-
-// Otsu, casi la solución perfecta, puesto que deja un puntito y creo
-// que también tapa el hueco de la sierra y no debería hacerlo, si se aumenta
-// el size del filtro gaussiano se queda tal cual las figuras todo sombreadas
-// pero lo dicho: igual no es lo suyo puesto que confundirá igual círculos
-Mat otsu = otsu_threshold(image, 5);
-imshow("otsu threshold", otsu);
-
-// Saca la línea azul esa fea a la izquierda, tengo que ver cómo retirarla
-Mat labelImage(otsu.size(), CV_32S);
-int nLabels = connectedComponents(otsu, labelImage, 4);
-vector<Vec3b> colors(nLabels);
-colors[0] = Vec3b(0, 0, 0);//background
-
-for (int label = 1; label < nLabels; ++label){
-  colors[label] = Vec3b((rand() & 255), (rand() & 255), (rand() & 255));
-}
-
-Mat* comp = new Mat[nLabels];
-for (int i = 1; i < nLabels; i++){
-  comp[i - 1] = Mat(otsu.size(), CV_8UC1, Scalar(0));
-  for (int r = 0; r < otsu.rows; ++r){
-    for (int c = 0; c < otsu.cols; ++c){
-      int pixel = labelImage.at<int>(r, c);
-      if (pixel == i){
-        comp[i - 1].at<uchar>(r, c) = 255;
-      }else{
-        comp[i - 1].at<uchar>(r, c) = 0;
+  if (objects.is_open()) { // Existen datos anteriores
+    do {
+      objects.read(buffer, BUFF_LENGTH);
+      readedCount = objects.gcount();
+      buffer_s = buffer_s + string(buffer).substr(0, readedCount);
+    } while (readedCount == BUFF_LENGTH);
+    // Los divide en lineas
+    pos = buffer_s.find("\n");
+    while (pos != string::npos) {
+      if (pos > MIN_LENGTH_LINE) {
+        lines.push_back(buffer_s.substr(0, pos));
       }
+      buffer_s.erase(0, pos + 1);
+      pos = buffer_s.find("\n");
+    }
+    std::ofstream s(PATH + DATA_NAME, std::ofstream::trunc);
+    s.close();
+  }
+  else { // Primer objeto aprendido
+    cout << "objetos.txt not found, creating a new file\n";
+    std::ofstream s(PATH + DATA_NAME);
+    s.close();
+    data[0] = 0;
+  }
+  objects.close();
+
+
+  // Encuentra la clase afectada, o no!
+  int required = -1;
+  for (int i = 0; i < lines.size(); i++) {
+    pos = lines[i].find(";");
+    if (lines[i].substr(0, pos) == obj_name) { // Encontrado
+      required = i;
+      break;
     }
   }
-  imshow("Connected Components " + to_string(i), comp[i - 1]);
-}
 
-Mat canny;
-Canny(otsu, canny, 100, 200);
-vector<vector<Point>> contours;
-findContours(canny, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
+  if (required == -1) { // No encontrado, crea nuevo
+    required = lines.size();
+    lines.push_back(obj_name + ";0;0;0;0;0;0;0;0;0;0;0");
+  }
 
-// Descartamos basurilla
-vector<vector<Point>> nice_contours;
-for(size_t i = 0; i < contours.size(); i++){
-  if ((contourArea(contours[i]) > 100) && (arcLength(contours[i], true) > 100)){
-    nice_contours.push_back(contours[i]);
+  // Lee datos de la clase afectada
+  string required_Class = lines[required];
+  lines.erase(lines.begin() + required);
+  pos = required_Class.find(";");
+  required_Class.erase(0, pos + 1);
+  for (int i = 0; i < NUM_FIELDS; i++) {
+    pos = required_Class.find(";");
+    data[i] = stod(required_Class.substr(0, pos));
+    required_Class.erase(0, pos + 1);
   }
 }
 
-// live the past, forget the moment, o algo así
-vector<Moments> mu(nice_contours.size());
-for(size_t i = 0; i < nice_contours.size(); i++){
-  mu[i] = moments(nice_contours[i]);
+int filter_contours(const vector<vector<Point>> contours) {
+  float maxArea = 0;
+  float aux;
+  int theBiggest = 0;
+  for (int i = 0; i < contours.size(); i++) {
+    aux = contourArea(contours[i]);
+    if (aux > maxArea) {
+      theBiggest = i;
+      maxArea = aux;
+    }
+  }
+  return theBiggest;
 }
 
-// Me ha costado pero esto es los moment center
-vector<Point2f> mc(nice_contours.size());
-for(size_t i = 0; i < nice_contours.size(); i++){
-  //add 1e-5 to avoid division by zero
-  mc[i] = Point2f(static_cast<float>(mu[i].m10 / (mu[i].m00 + 1e-5)),
-      static_cast<float>(mu[i].m01 / (mu[i].m00 + 1e-5)));
-  cout << "mc[" << i << "]=" << mc[i] << endl;
+void calculate_descriptors(const int theBiggest, const vector<vector<Point>> contours,
+  float& area, float& perim, double huMoments[]) {
+  area = contourArea(contours[theBiggest]);
+  perim = arcLength(contours[theBiggest], true);
+  Moments mu = moments(contours[theBiggest]); // Los momentos
+  HuMoments(mu, huMoments);
 }
-
-// las dibujaciones
-Mat drawing = Mat::zeros(canny.size(), CV_8UC3);
-for(size_t i = 0; i < nice_contours.size(); i++){
-  Scalar color = Scalar(rand() & 255, rand() & 255, rand() & 255);
-  drawContours(drawing, nice_contours, (int)i, color, 2);
-  circle(drawing, mc[i], 4, color, -1);
-}
-
-// las imprimiciones
-imshow("Contours", drawing);
-cout << "\t Info: Area and Contour Length \n";
-for(size_t i = 0; i < nice_contours.size(); i++){
-  cout << " * Contour[" << i << "] - Area (M_00) = " << std::fixed << std::setprecision(2) << mu[i].m00
-      << " - Area OpenCV: " << contourArea(nice_contours[i]) << " - Length: " << arcLength(nice_contours[i], true) << endl;
-}
-
-waitKey(0);
-
-return EXIT_SUCCESS;
-}
-*/
