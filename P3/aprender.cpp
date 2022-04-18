@@ -18,7 +18,7 @@ using std::cout;
 using std::endl;
 using namespace cv;
 
-const string PATH = "C:\\Users\\AlonsoDRDLV\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
+const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
 const string DATA_NAME = "objetos.txt";
 const double VAR_PERCENTAGE = 0.02;
 const int BUFF_LENGTH = 1024;
@@ -87,8 +87,6 @@ int main(int argc, char** argv){
   imshow("Image otsurized", otsu);
 
   //Find contours
-  //Mat canny;
-  //Canny(otsu, canny, 100, 200);
   vector<vector<Point>> contours;
   findContours(otsu, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
 
@@ -143,16 +141,16 @@ void read_data(const string& file_name, const string& obj_name, double* data, ve
 
   int pos;
 
-  if (objects.is_open()) { // Existen datos anteriores
-    do {
+  if (objects.is_open()){ // Existen datos anteriores
+    do{
       objects.read(buffer, BUFF_LENGTH);
       readedCount = objects.gcount();
       buffer_s = buffer_s + string(buffer).substr(0, readedCount);
-    } while (readedCount == BUFF_LENGTH);
+    }while (readedCount == BUFF_LENGTH);
     // Los divide en lineas
     pos = buffer_s.find("\n");
-    while (pos != string::npos) {
-      if (pos > MIN_LENGTH_LINE) {
+    while (pos != string::npos){
+      if (pos > MIN_LENGTH_LINE){
         lines.push_back(buffer_s.substr(0, pos));
       }
       buffer_s.erase(0, pos + 1);
@@ -160,8 +158,7 @@ void read_data(const string& file_name, const string& obj_name, double* data, ve
     }
     std::ofstream s(PATH + DATA_NAME, std::ofstream::trunc);
     s.close();
-  }
-  else { // Primer objeto aprendido
+  }else{ // Primer objeto aprendido
     cout << "objetos.txt not found, creating a new file\n";
     std::ofstream s(PATH + DATA_NAME);
     s.close();
