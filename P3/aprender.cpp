@@ -20,7 +20,7 @@ using namespace cv;
 
 const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P3\\images\\";
 const string DATA_NAME = "objetos.txt";
-const double VAR_PERCENTAGE = 0.25;
+const double VAR_PERCENTAGE = 0.02;
 const int BUFF_LENGTH = 1024;
 const int NUM_DESCRIPTORS = 5;
 const int NUM_FIELDS = NUM_DESCRIPTORS * 3 + 2;
@@ -117,8 +117,7 @@ int main(int argc, char** argv){
     data[2] = data[2] + pow((area - data[1] / data[0]), 2);
     cout << "var area: " << data[2] << endl;
     // Numerador de varianzas estimadas del area
-    //                                                                       por que el cuadrado?
-    data[3] = pow((data[1] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * pow((data[2] / (data[0] - 1)), 2);
+    data[3] = pow((data[1] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * data[2];
     cout << "var est area: " << data[3] << endl;
     // Numerador de medias del perimetro
     data[4] = data[4] + perim;
@@ -127,7 +126,7 @@ int main(int argc, char** argv){
     data[5] = data[5] + pow((perim - data[4] / data[0]), 2);
     cout << "var perim: " << data[5] << endl;
     // Numerador de varianzas estimadas del perimetro
-    data[6] = pow((data[4] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * pow((data[5] / (data[0] - 1)), 2);
+    data[6] = pow((data[4] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * data[5];
     cout << "var est perim: " << data[6] << endl;
     // Numerador de medias del primer momento Hu
     data[7] = data[7] + huMoments[0];
@@ -136,7 +135,7 @@ int main(int argc, char** argv){
     data[8] = data[8] + pow((huMoments[0] - data[7] / data[0]), 2);
     cout << "var hu1: " << data[8] << endl;
     // Numerador de varianzas estimadas del primer momento Hu
-    data[9] = pow((data[7] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * pow((data[8] / (data[0] - 1)), 2);
+    data[9] = pow((data[7] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * data[8];
     cout << "var est hu1: " << data[9] << endl;
     // Numerador de medias del segundo momento Hu
     data[10] = data[10] + huMoments[1];
@@ -145,7 +144,7 @@ int main(int argc, char** argv){
     data[11] = data[11] + pow((huMoments[1] - data[10] / data[0]), 2);
     cout << "var hu2: " << data[11] << endl;
     // Numerador de varianzas estimadas del segundo momento Hu
-    data[12] = pow((data[10] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * pow((data[11] / (data[0] - 1)), 2);
+    data[12] = pow((data[10] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * data[11];
     cout << "var est hu2: " << data[12] << endl;
     // Numerador de medias del tercer momento Hu
     data[13] = data[13] + huMoments[2];
@@ -154,7 +153,7 @@ int main(int argc, char** argv){
     data[14] = data[14] + pow((huMoments[2] - data[13] / data[0]), 2);
     cout << "var hu3: " << data[14] << endl;
     // Numerador de varianzas estimadas del tercer momento Hu
-    data[15] = pow((data[13] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * pow((data[14] / (data[0] - 1)), 2);
+    data[15] = pow((data[13] / data[0] * VAR_PERCENTAGE), 2) + (data[0] - 1) * data[14];
     cout << "var est hu3: " << data[15] << endl;
   }
 
