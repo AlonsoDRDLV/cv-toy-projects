@@ -92,7 +92,7 @@ int main(int argc, char** argv){
       
       means.push_back(means_aux);
       variances.push_back(variances_aux);
-      estimated_variances.push_back(variances_aux);
+      estimated_variances.push_back(estimated_variances_aux);
     }
     objects.close();
   }else{ // No se encuentra el fichero con los datos
