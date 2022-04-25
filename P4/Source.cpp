@@ -17,11 +17,13 @@ const string CURVY_WALL[5] = {"00.jpeg", "01.jpeg", "02.jpeg", "03.jpeg", "04.jp
 const string STRAIGHT_WALL[5] = {"10.jpeg", "11.jpeg", "12.jpeg", "13.jpeg", "14.jpeg"};
 const string MURAL[2] = {"40.jpeg", "41.jpeg"}; //, "42.jpeg"};
 const string HORIZONTAL_FROG[2] = { "50.jpeg", "51.jpeg" };
+const string VERTICAL_TOWER[2] = { "20.jpeg", "21.jpeg" };
+const string HORIZONTAL_CITY[2] = { "60.jpeg", "61.jpeg" };
 
 // Lo cambiable:
+const string IMAGE_SET[2] = { HORIZONTAL_FROG[0], HORIZONTAL_FROG[1] };
+const string IMAGE_SET_3D[2] = { HORIZONTAL_CITY[0], HORIZONTAL_CITY[1] };
 const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P4\\images\\";
-const string* IMAGE_SET = HORIZONTAL_FROG;
-const int IMAGE_SET_LENGTH = 2;
 const int WINDOWS_X[6] = {0, 600, 1200, 0, 600, 1200};
 const int WINDOWS_Y[6] = {0, 0, 0, 600, 600, 600};
 
@@ -32,10 +34,10 @@ void surf(Mat image1, Mat image2, float reject_ratio);
 void akaze(Mat image1, Mat image2, float reject_ratio);
 
 int main(){
-  // Load and show images
+  // Load and show imagesx
   string window_name;
   string fich_name = PATH + IMAGE_SET[0];
-  Mat image1, image2, result;
+  Mat image1, image2, result, image3d1, image3d2;
   image1 = imread(samples::findFile(fich_name), IMREAD_COLOR);
   if (image1.empty()){
     printf("Error opening image: %s\n", fich_name.c_str());
@@ -51,34 +53,61 @@ int main(){
   }
   resize(image2, image2, Size(512, 384)); // Originalmente son 2048x1536
 
-  window_name = "Image 1";
-  imshow(window_name, image1);
+  waitKey(0);
+
+  fich_name = PATH + IMAGE_SET_3D[0];
+  image3d1 = imread(samples::findFile(fich_name), IMREAD_COLOR);
+  if(image3d1.empty()){
+    printf("Error opening image: %s\n", fich_name.c_str());
+    return EXIT_FAILURE;
+  }
+  resize(image3d1, image3d1, Size(512, 384)); // Originalmente son 1536x2048
+  //resize(image3d1, image3d1, Size(1024, 768)); // Originalmente son 1536x2048
+
+
+  fich_name = PATH + IMAGE_SET_3D[1];
+  image3d2 = imread(samples::findFile(fich_name), IMREAD_COLOR);
+  if(image3d2.empty()){
+    printf("Error opening image: %s\n", fich_name.c_str());
+    return EXIT_FAILURE;
+  }
+  resize(image3d2, image3d2, Size(512, 384)); // Originalmente son 1536x2048
+  //resize(image3d2, image3d2, Size(1024, 768)); // Originalmente son 1536x2048
+
+
+  window_name = "Image 3D 1";
+  imshow(window_name, image3d1);
   moveWindow(window_name, WINDOWS_X[0], WINDOWS_Y[0]);
 
-  window_name = "Image 2";
-  imshow(window_name, image2);
+  window_name = "Image 3D 2";
+  imshow(window_name, image3d2);
   moveWindow(window_name, WINDOWS_X[1], WINDOWS_Y[1]);
 
   waitKey(0);
 
   // ORB HARRIS
   orbHarris(image1, image2, 0.8, 1.2);
+  orbHarris(image3d1, image3d2, 0.8, 1.2);
   waitKey(0);
 
   // ORB FAST
   orbFAST(image1, image2, 0.7, 1.1);
+  orbFAST(image3d1, image3d2, 0.8, 1.2);
   waitKey(0);
 
   // SIFT
   sift(image1, image2, 0.5);
+  sift(image3d1, image3d2, 0.8);
   waitKey(0);
 
   // SURF
   surf(image1, image2, 0.6);
+  surf(image3d1, image3d2, 0.8);
   waitKey(0);
 
   // AKAZE
   akaze(image1, image2, 0.7);
+  akaze(image3d1, image3d2, 0.8);
   waitKey(0);
 
   return EXIT_SUCCESS;
