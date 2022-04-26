@@ -61,8 +61,8 @@ int main(){
     printf("Error opening image: %s\n", fich_name.c_str());
     return EXIT_FAILURE;
   }
-  resize(image3d1, image3d1, Size(512, 384)); // Originalmente son 1536x2048
-  //resize(image3d1, image3d1, Size(1024, 768)); // Originalmente son 1536x2048
+  //resize(image3d1, image3d1, Size(512, 384)); // Originalmente son 1536x2048
+  resize(image3d1, image3d1, Size(1024, 768)); // Originalmente son 1536x2048
 
 
   fich_name = PATH + IMAGE_SET_3D[1];
@@ -71,8 +71,8 @@ int main(){
     printf("Error opening image: %s\n", fich_name.c_str());
     return EXIT_FAILURE;
   }
-  resize(image3d2, image3d2, Size(512, 384)); // Originalmente son 1536x2048
-  //resize(image3d2, image3d2, Size(1024, 768)); // Originalmente son 1536x2048
+  //resize(image3d2, image3d2, Size(512, 384)); // Originalmente son 1536x2048
+  resize(image3d2, image3d2, Size(1024, 768)); // Originalmente son 1536x2048
 
 
   window_name = "Image 3D 1";
@@ -139,6 +139,7 @@ void orbHarris(Mat image1, Mat image2, float reject_ratio, float scale_factor){
   }
 
   drawMatches(image1, key_points1, image2, key_points2, filtered_matches, result);
+  resize(result, result, Size(1024, 384));
   imshow(window_name, result);
   moveWindow(window_name, WINDOWS_X[3], WINDOWS_Y[3]);
 
@@ -170,6 +171,7 @@ void orbFAST(Mat image1, Mat image2, float reject_ratio, float scale_factor){
   }
 
   drawMatches(image1, key_points1, image2, key_points2, filtered_matches, result);
+  resize(result, result, Size(1024, 384));
   imshow(window_name, result);
   moveWindow(window_name, WINDOWS_X[3], WINDOWS_Y[3]);
 }
@@ -199,6 +201,7 @@ void sift(Mat image1, Mat image2, float reject_ratio){
   }
 
   drawMatches(image1, key_points1, image2, key_points2, filtered_matches, result);
+  resize(result, result, Size(1024, 384));
   imshow(window_name, result);
   moveWindow(window_name, WINDOWS_X[3], WINDOWS_Y[3]);
 }
@@ -229,6 +232,7 @@ void surf(Mat image1, Mat image2, float reject_ratio){
   }
 
   drawMatches(image1, key_points1, image2, key_points2, filtered_matches, result);
+  resize(result, result, Size(1024, 384));
   imshow(window_name, result);
   moveWindow(window_name, WINDOWS_X[3], WINDOWS_Y[3]);
 }
@@ -259,6 +263,7 @@ void akaze(Mat image1, Mat image2, float reject_ratio){
   }
 
   drawMatches(image1, key_points1, image2, key_points2, filtered_matches, result);
+  resize(result, result, Size(1024, 384));
   imshow(window_name, result);
   moveWindow(window_name, WINDOWS_X[3], WINDOWS_Y[3]);
 }
