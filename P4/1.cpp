@@ -5,39 +5,39 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/calib3d.hpp>
 
+using namespace cv;
+
 using std::size;
 using std::string;
 using std::vector;
 using std::to_string;
-using namespace cv;
+using xfeatures2d::SURF;
 
-const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P4\\images\\";
 const string CURVY_WALL[5] = {"00.jpeg", "01.jpeg", "02.jpeg", "03.jpeg", "04.jpeg"};
 const string STRAIGHT_WALL[5] = {"10.jpeg", "11.jpeg", "12.jpeg", "13.jpeg", "14.jpeg"};
 const string MURAL[2] = {"40.jpeg", "41.jpeg"}; //, "42.jpeg"};
 const string HORIZONTAL_FROG[2] = { "50.jpeg", "51.jpeg" };
+const string VERTICAL_TOWER[2] = { "20.jpeg", "21.jpeg" };
+const string HORIZONTAL_CITY[2] = { "60.jpeg", "61.jpeg" };
 
 // Lo cambiable:
-const string* IMAGE_SET = HORIZONTAL_FROG;
-const int IMAGE_SET_LENGTH = 2;
-
+const string IMAGE_SET[2] = { HORIZONTAL_FROG[0], HORIZONTAL_FROG[1] };
+const string IMAGE_SET_3D[2] = { HORIZONTAL_CITY[0], HORIZONTAL_CITY[1] };
+const string PATH = "C:\\Users\\pica\\Documents\\GitHub\\super-duper-system\\P4\\images\\";
 const int WINDOWS_X[6] = {0, 600, 1200, 0, 600, 1200};
 const int WINDOWS_Y[6] = {0, 0, 0, 600, 600, 600};
 
-Mat harris(Mat image, int threshold);
-Mat orbHarris(Mat image);
-Mat orbFAST(Mat image);
-Mat sift(Mat image);
-Mat surf(Mat image);
-Mat akaze(Mat image);
-
+void orbHarris(Mat image1, Mat image2, float reject_ratio, float scale_factor);
+void orbFAST(Mat image1, Mat image2, float reject_ratio, float scale_factor);
+void sift(Mat image1, Mat image2, float reject_ratio);
+void surf(Mat image1, Mat image2, float reject_ratio);
+void akaze(Mat image1, Mat image2, float reject_ratio);
 
 int main(){
+  // Load and show imagesx
   string window_name;
-
-  // Load images
   string fich_name = PATH + IMAGE_SET[0];
-  Mat image1, image2, result;
+  Mat image1, image2, result, image3d1, image3d2;
   image1 = imread(samples::findFile(fich_name), IMREAD_COLOR);
   if (image1.empty()){
     printf("Error opening image: %s\n", fich_name.c_str());
@@ -45,6 +45,7 @@ int main(){
   }
   resize(image1, image1, Size(512, 384)); // Originalmente son 2048x1536
 
+  fich_name = PATH + IMAGE_SET[1];
   image2 = imread(samples::findFile(fich_name), IMREAD_COLOR);
   if(image2.empty()){
     printf("Error opening image: %s\n", fich_name.c_str());
@@ -52,181 +53,217 @@ int main(){
   }
   resize(image2, image2, Size(512, 384)); // Originalmente son 2048x1536
 
-  window_name = "Image 1";
-  imshow(window_name, image1);
-  moveWindow(window_name, WINDOWS_X[0], WINDOWS_Y[0]);
+  //waitKey(0);
 
-  window_name = "Image 2";
-  imshow(window_name, image2);
-  moveWindow(window_name, WINDOWS_X[1], WINDOWS_Y[1]);
+  fich_name = PATH + IMAGE_SET_3D[0];
+  image3d1 = imread(samples::findFile(fich_name), IMREAD_COLOR);
+  if(image3d1.empty()){
+    printf("Error opening image: %s\n", fich_name.c_str());
+    return EXIT_FAILURE;
+  }
+  //resize(image3d1, image3d1, Size(512, 384)); // Originalmente son 1536x2048
+  resize(image3d1, image3d1, Size(1024, 768)); // Originalmente son 1536x2048
 
-  waitKey(0);
+
+  fich_name = PATH + IMAGE_SET_3D[1];
+  image3d2 = imread(samples::findFile(fich_name), IMREAD_COLOR);
+  if(image3d2.empty()){
+    printf("Error opening image: %s\n", fich_name.c_str());
+    return EXIT_FAILURE;
+  }
+  //resize(image3d2, image3d2, Size(512, 384)); // Originalmente son 1536x2048
+  resize(image3d2, image3d2, Size(1024, 768)); // Originalmente son 1536x2048
+
+
+  //window_name = "Image 3D 1";
+  //imshow(window_name, image3d1);
+  //moveWindow(window_name, WINDOWS_X[0], WINDOWS_Y[0]);
+
+  //window_name = "Image 3D 2";
+  //imshow(window_name, image3d2);
+  //moveWindow(window_name, WINDOWS_X[1], WINDOWS_Y[1]);
+
+  //waitKey(0);
 
   // ORB HARRIS
-  result = orbHarris(image1);
-  window_name = "Orb Harris 1";
-  imshow(window_name, result);
-  moveWindow(window_name, WINDOWS_X[3], WINDOWS_Y[3]);
-
-  result = orbHarris(image2);
-  window_name = "Orb Harris 2";
-  imshow(window_name, result);
-  moveWindow(window_name, WINDOWS_X[4], WINDOWS_Y[4]);
-
-  waitKey(0);
+  //orbHarris(image1, image2, 0.8, 1.2);
+  //orbHarris(image3d1, image3d2, 0.7, 1.1);
+  //waitKey(0);
 
   // ORB FAST
-  result = orbFAST(image1);
-  window_name = "Orb FAST 1";
-  imshow(window_name, result);
-  moveWindow(window_name, WINDOWS_X[3], WINDOWS_Y[3]);
-
-  result = orbFAST(image2);
-  window_name = "Orb FAST 2";
-  imshow(window_name, result);
-  moveWindow(window_name, WINDOWS_X[4], WINDOWS_Y[4]);
-
-  waitKey(0);
+  //orbFAST(image1, image2, 0.7, 1.1);
+  //orbFAST(image3d1, image3d2, 0.65, 1.2);
+  //waitKey(0);
 
   // SIFT
-  result = sift(image1);
-  window_name = "Sift 1";
-  imshow(window_name, result);
-  moveWindow(window_name, WINDOWS_X[3], WINDOWS_Y[3]);
-
-  result = sift(image2);
-  window_name = "Sift 2";
-  imshow(window_name, result);
-  moveWindow(window_name, WINDOWS_X[4], WINDOWS_Y[4]);
-
-  waitKey(0);
+  //sift(image1, image2, 0.5);
+  //sift(image3d1, image3d2, 0.4);
+  //waitKey(0);
 
   // SURF
-  result = surf(image1);
-  window_name = "Surf 1";
-  imshow(window_name, result);
-  moveWindow(window_name, WINDOWS_X[3], WINDOWS_Y[3]);
-
-  result = surf(image2);
-  window_name = "Surf 2";
-  imshow(window_name, result);
-  moveWindow(window_name, WINDOWS_X[4], WINDOWS_Y[4]);
-
-  waitKey(0);
+  //surf(image1, image2, 0.6);
+  //surf(image3d1, image3d2, 0.5);
+  //waitKey(0);
 
   // AKAZE
-  result = akaze(image1);
-  window_name = "Akaze 1";
-  imshow(window_name, result);
-  moveWindow(window_name, WINDOWS_X[3], WINDOWS_Y[3]);
- 
-  result = akaze(image2);
-  window_name = "Akaze 2";
-  imshow(window_name, result);
-  moveWindow(window_name, WINDOWS_X[4], WINDOWS_Y[4]);
-
-  waitKey(0);
+  //akaze(image1, image2, 0.7);
+  //akaze(image3d1, image3d2, 0.6);
+  //waitKey(0);
 
   return EXIT_SUCCESS;
 }
 
-Mat harris(Mat image, int threshold){
-  Mat result = image.clone();
-  int block_size = 2;
-  int aperture_size = 5;
-  double k = 0.04;
-  Mat gray, harris, norm, scaled;
-  cvtColor(result, gray, COLOR_BGR2GRAY);
+void orbHarris(Mat image1, Mat image2, float reject_ratio, float scale_factor){
+  Mat clone1 = image1.clone();
+  Mat clone2 = image2.clone();
+  Mat gray1, gray2, orbResult, result;
+  Ptr<ORB> orbHarris = ORB::create(500, scale_factor, 8, 31, 0, 2, ORB::HARRIS_SCORE, 31, 20);
+  vector<KeyPoint> key_points1, key_points2;
+  Mat descriptors1, descriptors2;
+  string window_name = "Orb Harris con ratio " + to_string(reject_ratio);
+  vector<vector<DMatch>> matches;
+  vector<DMatch> filtered_matches;
 
-  cornerHarris(gray, harris, block_size, aperture_size, k);
+  cvtColor(clone1, gray1, COLOR_BGR2GRAY);
+  cvtColor(clone2, gray2, COLOR_BGR2GRAY);
 
-  normalize(harris, norm, 0, 255, NORM_MINMAX, CV_32FC1, Mat());
+  orbHarris->detectAndCompute(gray1, orbResult, key_points1, descriptors1);
+  orbHarris->detectAndCompute(gray2, orbResult, key_points2, descriptors2);
 
-  convertScaleAbs(norm, scaled);
-
-  vector<KeyPoint> key_points;
-
-  for(int i = 0; i < result.rows; i++){
-    for(int j = 0; j < result.cols; j++){
-      if((int)norm.at<float>(i, j) > threshold){
-        key_points.push_back(KeyPoint(j, i, 2));
-      }
+  Ptr<BFMatcher> bf = BFMatcher::create(NORM_L2, false);
+  bf->knnMatch(descriptors1, descriptors2, matches, 2);
+  for (int i = 0; i < matches.size(); i++){
+    if (matches[i][0].distance < matches[i][1].distance * reject_ratio){
+      filtered_matches.push_back(matches[i][0]);
     }
   }
 
-  drawKeypoints(result, key_points, result);
-  return result;
+  drawMatches(image1, key_points1, image2, key_points2, filtered_matches, result);
+  resize(result, result, Size(1024, 384));
+  imshow(window_name, result);
+  moveWindow(window_name, WINDOWS_X[3], WINDOWS_Y[3]);
+
 }
 
-Mat orbHarris(Mat image){
-  Mat result = image.clone();
-  Mat gray, orb;
-  Ptr<ORB> detector = ORB::create();
-  vector<KeyPoint> key_points;
-  Mat descriptors;
+void orbFAST(Mat image1, Mat image2, float reject_ratio, float scale_factor){
+  Mat clone1 = image1.clone();
+  Mat clone2 = image2.clone();
+  Mat gray1, gray2, orbResult, result;
+  Ptr<ORB> orbFAST = ORB::create(500, scale_factor, 8, 31, 0, 2, ORB::FAST_SCORE, 31, 20);
+  vector<KeyPoint> key_points1, key_points2;
+  Mat descriptors1, descriptors2;
+  string window_name = "Orb FAST con ratio " + to_string(reject_ratio);
+  vector<vector<DMatch>> matches;
+  vector<DMatch> filtered_matches;
 
-  cvtColor(result, gray, COLOR_BGR2GRAY);
+  cvtColor(clone1, gray1, COLOR_BGR2GRAY);
+  cvtColor(clone2, gray2, COLOR_BGR2GRAY);
 
-  detector->detectAndCompute(gray, orb, key_points, descriptors);
+  orbFAST->detectAndCompute(gray1, orbResult, key_points1, descriptors1);
+  orbFAST->detectAndCompute(gray2, orbResult, key_points2, descriptors2);
 
-  drawKeypoints(result, key_points, result);
-  return result;
+  Ptr<BFMatcher> bf = BFMatcher::create(NORM_L2, false);
+  bf->knnMatch(descriptors1, descriptors2, matches, 2);
+  for(int i = 0; i < matches.size(); i++){
+    if(matches[i][0].distance < matches[i][1].distance * reject_ratio){
+      filtered_matches.push_back(matches[i][0]);
+    }
+  }
+
+  drawMatches(image1, key_points1, image2, key_points2, filtered_matches, result);
+  resize(result, result, Size(1024, 384));
+  imshow(window_name, result);
+  moveWindow(window_name, WINDOWS_X[3], WINDOWS_Y[3]);
 }
 
-Mat orbFAST(Mat image){
-  Mat result = image.clone();
-  Mat gray, orb;
-  Ptr<ORB> detector = ORB::create(500, 1.2F, 8, 31, 0, 2, ORB::FAST_SCORE, 31, 20);
-  vector<KeyPoint> key_points;
-  Mat descriptors;
+void sift(Mat image1, Mat image2, float reject_ratio){
+  Mat clone1 = image1.clone();
+  Mat clone2 = image2.clone();
+  Mat gray1, gray2, siftResult, result;
+  Ptr<SIFT> sift = SIFT::create();
+  vector<KeyPoint> key_points1, key_points2;
+  Mat descriptors1, descriptors2;
+  string window_name = "Sift con ratio " + to_string(reject_ratio);
+  vector<vector<DMatch>> matches;
+  vector<DMatch> filtered_matches;
 
-  cvtColor(result, gray, COLOR_BGR2GRAY);
+  cvtColor(clone1, gray1, COLOR_BGR2GRAY);
+  cvtColor(clone2, gray2, COLOR_BGR2GRAY);
+  sift->detectAndCompute(gray1, siftResult, key_points1, descriptors1);
+  sift->detectAndCompute(gray2, siftResult, key_points2, descriptors2);
 
-  detector->detectAndCompute(gray, orb, key_points, descriptors);
+  Ptr<BFMatcher> bf = BFMatcher::create(NORM_L2, false);
+  bf->knnMatch(descriptors1, descriptors2, matches, 2);
+  for(int i = 0; i < matches.size(); i++){
+    if(matches[i][0].distance < matches[i][1].distance * reject_ratio){
+      filtered_matches.push_back(matches[i][0]);
+    }
+  }
 
-  drawKeypoints(result, key_points, result);
-  return result;
+  drawMatches(image1, key_points1, image2, key_points2, filtered_matches, result);
+  resize(result, result, Size(1024, 384));
+  imshow(window_name, result);
+  moveWindow(window_name, WINDOWS_X[3], WINDOWS_Y[3]);
 }
 
-Mat sift(Mat image){
-  Mat result = image.clone();
-  Mat gray, orb;
-  Ptr<SIFT> detector = SIFT::create();
-  vector<KeyPoint> key_points;
-  Mat descriptors;
+void surf(Mat image1, Mat image2, float reject_ratio){
+  Mat clone1 = image1.clone();
+  Mat clone2 = image2.clone();
+  Mat gray1, gray2, surfResult, result;
+  Ptr<SURF> surf = SURF::create();
+  vector<KeyPoint> key_points1, key_points2;
+  Mat descriptors1, descriptors2;
+  string window_name = "Surf con ratio " + to_string(reject_ratio);
+  vector<vector<DMatch>> matches;
+  vector<DMatch> filtered_matches;
 
-  cvtColor(result, gray, COLOR_BGR2GRAY);
+  cvtColor(clone1, gray1, COLOR_BGR2GRAY);
+  cvtColor(clone2, gray2, COLOR_BGR2GRAY);
 
-  detector->detectAndCompute(gray, orb, key_points, descriptors);
+  surf->detectAndCompute(gray1, surfResult, key_points1, descriptors1);
+  surf->detectAndCompute(gray2, surfResult, key_points2, descriptors2);
 
-  drawKeypoints(result, key_points, result);
-  return result;
+  Ptr<BFMatcher> bf = BFMatcher::create(NORM_L2, false);
+  bf->knnMatch(descriptors1, descriptors2, matches, 2);
+  for(int i = 0; i < matches.size(); i++){
+    if(matches[i][0].distance < matches[i][1].distance * reject_ratio){
+      filtered_matches.push_back(matches[i][0]);
+    }
+  }
+
+  drawMatches(image1, key_points1, image2, key_points2, filtered_matches, result);
+  resize(result, result, Size(1024, 384));
+  imshow(window_name, result);
+  moveWindow(window_name, WINDOWS_X[3], WINDOWS_Y[3]);
 }
 
-Mat surf(Mat image){
-  Mat result = image.clone();
-  Mat gray, orb;
-  Ptr<xfeatures2d::SURF> surf = xfeatures2d::SURF::create();
-  vector<KeyPoint> key_points;
-
-  cvtColor(result, gray, COLOR_BGR2GRAY);
-  
-  surf->detect(gray, key_points);
-
-  drawKeypoints(result, key_points, result);
-  return result;
-}
-
-Mat akaze(Mat image){
-  Mat result = image.clone();
-  Mat gray, orb;
+void akaze(Mat image1, Mat image2, float reject_ratio){
+  Mat clone1 = image1.clone();
+  Mat clone2 = image2.clone();
+  Mat gray1, gray2, akazeResult, result;
   Ptr<AKAZE> akaze = AKAZE::create();
-  vector<KeyPoint> key_points;
+  vector<KeyPoint> key_points1, key_points2;
+  Mat descriptors1, descriptors2;
+  string window_name = "Akaze con ratio " + to_string(reject_ratio);
+  vector<vector<DMatch>> matches;
+  vector<DMatch> filtered_matches;
 
-  cvtColor(result, gray, COLOR_BGR2GRAY);
+  cvtColor(clone1, gray1, COLOR_BGR2GRAY);
+  cvtColor(clone2, gray2, COLOR_BGR2GRAY);
 
-  akaze->detect(gray, key_points);
+  akaze->detectAndCompute(gray1, akazeResult, key_points1, descriptors1);
+  akaze->detectAndCompute(gray2, akazeResult, key_points2, descriptors2);
 
-  drawKeypoints(result, key_points, result);
-  return result;
+  Ptr<BFMatcher> bf = BFMatcher::create(NORM_L2, false);
+  bf->knnMatch(descriptors1, descriptors2, matches, 2);
+  for(int i = 0; i < matches.size(); i++){
+    if(matches[i][0].distance < matches[i][1].distance * reject_ratio){
+      filtered_matches.push_back(matches[i][0]);
+    }
+  }
+
+  drawMatches(image1, key_points1, image2, key_points2, filtered_matches, result);
+  resize(result, result, Size(1024, 384));
+  imshow(window_name, result);
+  moveWindow(window_name, WINDOWS_X[3], WINDOWS_Y[3]);
 }
