@@ -21,7 +21,7 @@ const string MURAL[2] = {"40.jpeg", "41.jpeg"}; //, "42.jpeg"};
 const string HORIZONTAL_FROG[2] = { "50.jpeg", "51.jpeg" };
 const string VERTICAL_TOWER[2] = { "20.jpeg", "21.jpeg" };
 const string HORIZONTAL_CITY[2] = { "60.jpeg", "61.jpeg" };
-const string HORIZONTAL_BUILDING[5] = { "70.JPG", "71.JPG", "72.JPG", "73.JPG", "74.JPG" };
+const string HORIZONTAL_BUILDING[5] = { "72.JPG", "71.JPG", "73.JPG", "70.JPG", "74.JPG" };
 
 // Lo cambiable:
 const string IMAGE_SET[5] = { HORIZONTAL_BUILDING[0], HORIZONTAL_BUILDING[1], 
@@ -38,7 +38,7 @@ void surf(Mat image1, Mat image2, float reject_ratio);
 void akaze(Mat image1, Mat image2, float reject_ratio);
 Mat addPanorama(Mat image1, Mat image2, float reject_ratio);
 std::vector<cv::Point2f> getCorners(const cv::Mat& img);
-void doPanorama(const Mat& img1, const Mat& img2, Mat& img_panorama);
+void doPanorama(const Mat& img1, const Mat& img2, Mat& img_panorama, float reject_ratio);
 cv::Mat warpImages(const cv::Mat& img1, const cv::Mat& img2, const cv::Mat& homography);
 
 
@@ -60,15 +60,27 @@ int main(){
   destroyAllWindows();
 
   // Make panorama
-  float reject_ratio = 0.8;
-  Mat panorama;
-  doPanorama(images[0], images[1], panorama);
-  imshow("Pan " + to_string(0) + "-" + to_string(1), panorama);
+  float reject_ratio = 0.5;
+  Mat panorama, aux;
+  doPanorama(images[0], images[1], panorama, reject_ratio);
+  aux = panorama.clone();
+  if ((panorama.rows > 1000) || (panorama.cols > 1900)){
+    resize(aux, aux, Size(1900, 1000));
+  }
+  window_name = "Pan " + to_string(0) + "-" + to_string(1);
+  imshow(window_name, aux);
+  moveWindow(window_name, 10, 10);
   waitKey(0);
   destroyAllWindows();
   for (int i = 2; i < size(IMAGE_SET); i++){
-    doPanorama(panorama, images[i], panorama);
-    imshow("Pan " + to_string(0) + "-" + to_string(i), panorama);
+    doPanorama(images[i], panorama, panorama, reject_ratio);
+    aux = panorama.clone();
+    if ((panorama.rows > 1000) || (panorama.cols > 1900)){
+      resize(aux, aux, Size(1900, 1000));
+    }
+    window_name = "Pan " + to_string(0) + "-" + to_string(i);
+    imshow(window_name, aux);
+    moveWindow(window_name, 10, 10);
     waitKey(0);
     destroyAllWindows();
   }
@@ -76,7 +88,7 @@ int main(){
   return EXIT_SUCCESS;
 }
 
-void doPanorama(const cv::Mat& img1, const cv::Mat& img2, cv::Mat& img_panorama){
+void doPanorama(const cv::Mat& img1, const cv::Mat& img2, cv::Mat& img_panorama, float reject_ratio){
 
   Mat img1_gray, img2_gray;
   cvtColor(img1, img1_gray, cv::COLOR_BGR2GRAY);
@@ -103,7 +115,7 @@ void doPanorama(const cv::Mat& img1, const cv::Mat& img2, cv::Mat& img_panorama)
     DMatch first = nn_matches[i][0];
     float dist1 = nn_matches[i][0].distance;
     float dist2 = nn_matches[i][1].distance;
-    if(dist1 < 0.8 * dist2) {
+    if(dist1 < reject_ratio * dist2) {
       matched1.push_back(kpts1[first.queryIdx]);
       matched2.push_back(kpts2[first.trainIdx]);
       matchIdx1.push_back(first.queryIdx);
@@ -210,67 +222,17 @@ cv::Mat warpImages(const cv::Mat& img1, const cv::Mat& img2, const cv::Mat& homo
   sizes.push_back(result_size);
   sizes.push_back(result_size);
 
-  // Ajustar las máscaras con el buscador de seams
-  //if (seam_type != SeamType::NO){
-  //  std::shared_ptr<cv::detail::SeamFinder> seam_finder;
-  //  if(seam_type == SeamType::VORONOI) {
-  //    seam_finder = std::make_shared<cv::detail::VoronoiSeamFinder>();
-  //  }
-  //  else if(seam_type == SeamType::DP_COLOR) {
-  //    seam_finder = std::make_shared<cv::detail::DpSeamFinder>(cv::detail::DpSeamFinder::COLOR);
-  //  }
-  //  seam_finder->find(images, corners, masks);
-  //}
-
   // Mezclar las dos imágenes
 
   cv::Mat result;
-  //if(blend_type == BlendType::LINEAR) {
-  //  cv::GaussianBlur(mask_result1, mask_result1, cv::Size(3, 3), 2);
-  //  cv::GaussianBlur(mask_result2, mask_result2, cv::Size(3, 3), 2);
-  //  cv::Mat mask_and;
-  //  cv::bitwise_and(mask_result1, mask_result2, mask_and);
-  //  cv::addWeighted(result1, 0.5, result2, 0.5, 0, result);
-  //  cv::copyTo(result1, result, mask_result1 - mask_and);
-  //  cv::copyTo(result2, result, mask_result2 - mask_and);
-
-  //}
-  //else if(blend_type == BlendType::MULTI_BAND || blend_type == BlendType::FEATHER) {
-  //  cv::Mat result1_s, result2_s;
-  //  result1.convertTo(result1_s, CV_16S);
-  //  result2.convertTo(result2_s, CV_16S);
-
-  //  std::shared_ptr<cv::detail::Blender> blender;
-
-  //  if(blend_type == BlendType::MULTI_BAND) {
-  //    float blend_strength = 5;
-  //    Size dst_sz = cv::detail::resultRoi(corners, sizes).size();
-  //    float blend_width = sqrt(static_cast<float>(dst_sz.area())) * blend_strength / 100.f;
-  //    int num_bands = static_cast<int>(ceil(log(blend_width) / log(2.)) - 1.);
-  //    blender = std::make_shared<cv::detail::MultiBandBlender>(false, num_bands);
-  //  }
-  //  else {
-  //    blender = std::make_shared<cv::detail::FeatherBlender>(0.0199999);
-  //  }
-  //  Rect roi = cv::detail::resultRoi(corners, sizes);
-  //  blender->prepare(roi);
-  //  blender->feed(result1_s, masks[0], corners[0]);
-  //  blender->feed(result2_s, masks[1], corners[1]);
-  //  cv::Mat result_blend, result_mask;
-  //  blender->blend(result_blend, result_mask);
-  //  result_blend.convertTo(result, CV_8U);
-
-  //}
-  //else {
   int erosion_type = 0;
   int erosion_size = 2;
   Mat element = getStructuringElement(erosion_type,
-    Size(2 * erosion_size + 1, 2 * erosion_size + 1),
-    Point(erosion_size, erosion_size));
+      Size(2 * erosion_size + 1, 2 * erosion_size + 1),
+      Point(erosion_size, erosion_size));
   erode(mask_result2, mask_result2, element);
   result = result1.clone();
   result2.copyTo(result, mask_result2);
-  //}
 
   return result;
 }
