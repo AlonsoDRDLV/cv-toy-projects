@@ -36,10 +36,9 @@ void orbFAST(Mat image1, Mat image2, float reject_ratio, float scale_factor);
 void sift(Mat image1, Mat image2, float reject_ratio);
 void surf(Mat image1, Mat image2, float reject_ratio);
 void akaze(Mat image1, Mat image2, float reject_ratio);
-Mat addPanorama(Mat image1, Mat image2, float reject_ratio);
-std::vector<cv::Point2f> getCorners(const cv::Mat& img);
+vector<Point2f> getCorners(const Mat& img);
 void doPanorama(const Mat& img1, const Mat& img2, Mat& img_panorama, float reject_ratio);
-cv::Mat warpImages(const cv::Mat& img1, const cv::Mat& img2, const cv::Mat& homography);
+Mat warpImages(const Mat& img1, const Mat& img2, const Mat& homography);
 
 
 int main(){
@@ -60,9 +59,9 @@ int main(){
   destroyAllWindows();
 
   // Make panorama
-  float reject_ratio = 0.5;
+  float reject_ratio = 0.6;
   Mat panorama, aux;
-  doPanorama(images[0], images[1], panorama, reject_ratio);
+  doPanorama(images[1], images[0], panorama, reject_ratio);
   aux = panorama.clone();
   if ((panorama.rows > 1000) || (panorama.cols > 1900)){
     resize(aux, aux, Size(1900, 1000));
@@ -72,7 +71,7 @@ int main(){
   moveWindow(window_name, 10, 10);
   waitKey(0);
   destroyAllWindows();
-  for (int i = 2; i < size(IMAGE_SET); i++){
+  for (int i = 2; i < size(IMAGE_SET); i++){ // Add more images to the panorama
     doPanorama(images[i], panorama, panorama, reject_ratio);
     aux = panorama.clone();
     if ((panorama.rows > 1000) || (panorama.cols > 1900)){
@@ -88,11 +87,10 @@ int main(){
   return EXIT_SUCCESS;
 }
 
-void doPanorama(const cv::Mat& img1, const cv::Mat& img2, cv::Mat& img_panorama, float reject_ratio){
-
+void doPanorama(const Mat& img1, const Mat& img2, Mat& img_panorama, float reject_ratio){
   Mat img1_gray, img2_gray;
-  cvtColor(img1, img1_gray, cv::COLOR_BGR2GRAY);
-  cvtColor(img2, img2_gray, cv::COLOR_BGR2GRAY);
+  cvtColor(img1, img1_gray, COLOR_BGR2GRAY);
+  cvtColor(img2, img2_gray, COLOR_BGR2GRAY);
 
   // Find matches
   Mat desc1, desc2;
@@ -111,11 +109,11 @@ void doPanorama(const cv::Mat& img1, const cv::Mat& img2, cv::Mat& img_panorama,
   // Conservar emparejamiento si es mejor que el segundo más parecido
   matched1.clear();
   matched2.clear();
-  for(size_t i = 0; i < nn_matches.size(); i++) {
+  for (size_t i = 0; i < nn_matches.size(); i++){
     DMatch first = nn_matches[i][0];
     float dist1 = nn_matches[i][0].distance;
     float dist2 = nn_matches[i][1].distance;
-    if(dist1 < reject_ratio * dist2) {
+    if (dist1 < reject_ratio * dist2){
       matched1.push_back(kpts1[first.queryIdx]);
       matched2.push_back(kpts2[first.trainIdx]);
       matchIdx1.push_back(first.queryIdx);
@@ -132,99 +130,68 @@ void doPanorama(const cv::Mat& img1, const cv::Mat& img2, cv::Mat& img_panorama,
 
   Mat img_matches;
   vector<DMatch> matches(matched1.size());
-  for(int i = 0; i < matched1.size(); ++i)
+  for(int i = 0; i < matched1.size(); ++i){
     matches[i] = DMatch(i, i, 0);
+  }
   drawMatches(img1, matched1, img2, matched2, matches, img_matches);
   imshow("Matches", img_matches);
-
   waitKey(0);
 
-  // Hand-made RANSAC
-  //Ransac robust_solver(pair->matched1, pair->matched2);
-  //Mat homography = robust_solver.execute();
-
-   // Built-in RANSAC
-   std::vector<cv::Point2f> puntos_1, puntos_2;
-   for (int i = 0; i < matched1.size(); i++) {
+   // RANSAC
+   vector<Point2f> puntos_1, puntos_2;
+   for (int i = 0; i < matched1.size(); i++){
        puntos_1.push_back(matched1[i].pt);
        puntos_2.push_back(matched2[i].pt);
    }
-   cv::Mat homography = cv::findHomography(puntos_1, puntos_2, cv::RANSAC);
+   Mat homography = findHomography(puntos_1, puntos_2, RANSAC);
 
   img_panorama = warpImages(img1, img2, homography);
-
 }
 
-cv::Mat warpImages(const cv::Mat& img1, const cv::Mat& img2, const cv::Mat& homography){
+Mat warpImages(const Mat& img1, const Mat& img2, const Mat& homography){
   // Transformar img1 según homography y colocarle encima img2
-
-  std::vector<cv::Point2f> corners_img1 = getCorners(img1);
-  std::vector<cv::Point2f> corners_img2 = getCorners(img2);
-
-  std::vector<cv::Point2f> corners_img1_warped;
-  cv::perspectiveTransform(corners_img1, corners_img1_warped, homography);
-
-  std::vector<cv::Point2f> all_corners = corners_img1_warped;
+  vector<Point2f> corners_img1 = getCorners(img1);
+  vector<Point2f> corners_img2 = getCorners(img2);
+  vector<Point2f> corners_img1_warped;
+  perspectiveTransform(corners_img1, corners_img1_warped, homography);
+  vector<Point2f> all_corners = corners_img1_warped;
   all_corners.insert(all_corners.end(), corners_img2.begin(), corners_img2.end());
 
   // Buscar las dimensiones de la imagen final
   int xmin = INT_MAX, xmax = INT_MIN;
   int ymin = INT_MAX, ymax = INT_MIN;
-  for(auto corner : all_corners) {
-    xmin = std::min((int)corner.x, xmin);
-    xmax = std::max((int)corner.x, xmax);
-    ymin = std::min((int)corner.y, ymin);
-    ymax = std::max((int)corner.y, ymax);
+  for (auto corner : all_corners){
+    xmin = min((int)corner.x, xmin);
+    xmax = max((int)corner.x, xmax);
+    ymin = min((int)corner.y, ymin);
+    ymax = max((int)corner.y, ymax);
   }
 
-  // Crear matriz de translación
-  cv::Mat translation = cv::Mat::eye(3, 3, CV_64F);
+  // Crear matriz de traslacion
+  Mat translation = Mat::eye(3, 3, CV_64F);
   translation.at<double>(0, 2) = -xmin;
   translation.at<double>(1, 2) = -ymin;
 
-  // Obtener máscaras iniciales para cada imágen (píxeles con información)
 
-  std::vector<cv::Point2f> corners_result1;
-  std::vector<cv::Point2f> corners_result2;
+  vector<Point2f> corners_result1;
+  vector<Point2f> corners_result2;
+  Size result_size = Size(xmax - xmin, ymax - ymin);
+  Mat result1, result2;
+  warpPerspective(img1, result1, translation * homography, result_size);
+  perspectiveTransform(corners_img1, corners_result1, translation * homography);
+  warpPerspective(img2, result2, translation, result_size);
+  perspectiveTransform(corners_img2, corners_result2, translation);
 
-  // Tamaño de la imagen final
-  cv::Size result_size = cv::Size(xmax - xmin, ymax - ymin);
-
-  cv::Mat result1, result2;
-  cv::warpPerspective(img1, result1, translation * homography, result_size);
-  cv::perspectiveTransform(corners_img1, corners_result1, translation * homography);
-
-  cv::warpPerspective(img2, result2, translation, result_size);
-  cv::perspectiveTransform(corners_img2, corners_result2, translation);
-
-  cv::Mat mask_result1, mask_result2;
-  cv::Mat result1_gray;
-  cv::Mat result2_gray;
-  cv::cvtColor(result1, result1_gray, cv::COLOR_BGR2GRAY);
-  cv::cvtColor(result2, result2_gray, cv::COLOR_BGR2GRAY);
-  cv::threshold(result1_gray, mask_result1, 0, 255, cv::THRESH_BINARY);
-  cv::threshold(result2_gray, mask_result2, 0, 255, cv::THRESH_BINARY);
-
-  // Guardar todo en listas
-  std::vector<UMat> images;
-  images.push_back(result1.getUMat(ACCESS_RW));
-  images.push_back(result2.getUMat(ACCESS_RW));
-
-  std::vector<Point> corners;
-  corners.push_back(cv::Point(0, 0));
-  corners.push_back(cv::Point(0, 0));
-
-  std::vector<UMat> masks;
-  masks.push_back(mask_result1.getUMat(ACCESS_RW));
-  masks.push_back(mask_result2.getUMat(ACCESS_RW));
-
-  std::vector<Size> sizes;
-  sizes.push_back(result_size);
-  sizes.push_back(result_size);
+  Mat mask_result1, mask_result2;
+  Mat result1_gray;
+  Mat result2_gray;
+  cvtColor(result1, result1_gray, COLOR_BGR2GRAY);
+  cvtColor(result2, result2_gray, COLOR_BGR2GRAY);
+  threshold(result1_gray, mask_result1, 0, 255, THRESH_BINARY);
+  threshold(result2_gray, mask_result2, 0, 255, THRESH_BINARY);
 
   // Mezclar las dos imágenes
-
-  cv::Mat result;
+  Mat result;
   int erosion_type = 0;
   int erosion_size = 2;
   Mat element = getStructuringElement(erosion_type,
@@ -237,121 +204,7 @@ cv::Mat warpImages(const cv::Mat& img1, const cv::Mat& img2, const cv::Mat& homo
   return result;
 }
 
-Mat addPanorama(Mat orig, Mat added, float reject_ratio){
-  Mat clone_orig = orig.clone();
-  Mat clone_added = added.clone();
-  Mat gray_orig, gray_added, surf_orig_result, surf_added_result, surf_result, result;
-  Ptr<SURF> surf = SURF::create();
-  vector<KeyPoint> key_points_orig, key_points_added;
-  Mat descriptors_orig, descriptors_added;
-  vector<vector<DMatch>> matches;
-  vector<DMatch> filtered_matches;
-
-  cvtColor(clone_orig, gray_orig, COLOR_BGR2GRAY);
-  cvtColor(clone_added, gray_added, COLOR_BGR2GRAY);
-
-  imshow("Gray orig", gray_orig);
-  imshow("Gray added", gray_added);
-
-  waitKey(0);
-  destroyAllWindows();
-
-  surf->detectAndCompute(gray_orig, surf_orig_result, key_points_orig, descriptors_orig);
-  surf->detectAndCompute(gray_added, surf_added_result, key_points_added, descriptors_added);
-
-  Ptr<BFMatcher> bf = BFMatcher::create(NORM_L2, false);
-  bf->knnMatch(descriptors_orig, descriptors_added, matches, 2);
-  for(int i = 0; i < matches.size(); i++){
-    if(matches[i][0].distance < matches[i][1].distance * reject_ratio){
-      filtered_matches.push_back(matches[i][0]);
-    }
-  }
-
-  drawMatches(clone_orig, key_points_orig, clone_added, key_points_added, filtered_matches, surf_result);
-  imshow("Surf con ratio " + to_string(reject_ratio), surf_result);
-  waitKey(0);
-  destroyAllWindows();
-
-  vector<Point2f> matched_key_points_orig;
-  vector<Point2f> matched_key_points_added;
-  for(size_t i = 0; i < filtered_matches.size(); i++){
-    matched_key_points_added.push_back(key_points_orig[filtered_matches[i].queryIdx].pt);
-    matched_key_points_orig.push_back(key_points_added[filtered_matches[i].trainIdx].pt);
-  }
-  Mat h = findHomography(matched_key_points_orig, matched_key_points_added, RANSAC);
-  
-  // Mezclar imagenes:
-  vector<Point2f> corners_orig = getCorners(clone_orig);
-  vector<Point2f> corners_added = getCorners(clone_added);
-
-  vector<Point2f> corners_orig_warped;
-  perspectiveTransform(corners_orig, corners_orig_warped, h);
-
-  vector<Point2f> all_corners = corners_orig_warped;
-  all_corners.insert(all_corners.end(), corners_added.begin(), corners_added.end());
-
-  // Buscar las dimensiones de la imagen final
-  int xmin = INT_MAX, xmax = INT_MIN;
-  int ymin = INT_MAX, ymax = INT_MIN;
-  for(auto corner : all_corners){
-    xmin = min((int)corner.x, xmin);
-    xmax = max((int)corner.x, xmax);
-    ymin = min((int)corner.y, ymin);
-    ymax = max((int)corner.y, ymax);
-  }
-
-  // Crear matriz de translación
-  Mat translation = Mat::eye(3, 3, CV_64F);
-  translation.at<double>(0, 2) = -xmin;
-  translation.at<double>(1, 2) = -ymin;
-
-  // Obtener máscaras iniciales para cada imágen (píxeles con información)
-  vector<Point2f> result_corners_orig;
-  vector<Point2f> result_corners_added;
-
-  // Tamaño de la imagen final
-  Size result_size = Size(xmax - xmin, ymax - ymin);
-  Mat result_orig, result_added;
-  warpPerspective(clone_orig, result_orig, translation * h, result_size);
-  perspectiveTransform(corners_orig, result_corners_orig, translation * h);
-  warpPerspective(clone_added, result_added, translation, result_size);
-  perspectiveTransform(corners_added, result_corners_added, translation);
-
-  Mat result_orig_mask, result_added_mask;
-  Mat result_orig_gray;
-  Mat result_added_gray;
-  cvtColor(result_orig, result_orig_gray, COLOR_BGR2GRAY);
-  cvtColor(result_added, result_added_gray, COLOR_BGR2GRAY);
-  threshold(result_orig_gray, result_orig_mask, 0, 255, THRESH_BINARY);
-  threshold(result_added_gray, result_added_mask, 0, 255, THRESH_BINARY);
-
-  // Guardar todo en listas
-  vector<UMat> images;
-  images.push_back(result_orig.getUMat(ACCESS_RW));
-  images.push_back(result_added.getUMat(ACCESS_RW));
-  vector<Point> corners;
-  corners.push_back(Point(0, 0));
-  corners.push_back(Point(0, 0));
-  vector<UMat> masks;
-  masks.push_back(result_orig_mask.getUMat(ACCESS_RW));
-  masks.push_back(result_added_mask.getUMat(ACCESS_RW));
-  vector<Size> sizes;
-  sizes.push_back(result_size);
-  sizes.push_back(result_size);
-
-  // Mezclar las dos imágenes
-  GaussianBlur(result_orig_mask, result_orig_mask, Size(3, 3), 2);
-  GaussianBlur(result_added_mask, result_added_mask, Size(3, 3), 2);
-  Mat mask_and;
-  bitwise_and(result_orig_mask, result_added_mask, mask_and);
-  addWeighted(result_orig, 0.5, result_added, 0.5, 0, result);
-  result_orig.copyTo(result, result_orig_mask - mask_and);
-  result_orig_mask.copyTo(result, result_added_mask - mask_and);
-
-  return result;
-}
-
-vector<Point2f> getCorners(const Mat& img) {
+vector<Point2f> getCorners(const Mat& img){
   int cols = img.cols;
   int rows = img.rows;
   vector<Point2f> corners(4);
