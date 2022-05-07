@@ -5,11 +5,18 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/stitching/detail/seam_finders.hpp>
+#include <chrono>
+#include <iostream>
 
 using namespace cv;
 using namespace cv::detail;
 
 using std::size;
+using std::cout;
+using std::endl;
+using std::chrono::steady_clock;
+using std::chrono::duration_cast;
+using std::chrono::microseconds;
 using std::string;
 using std::vector;
 using std::to_string;
@@ -22,6 +29,8 @@ const string HORIZONTAL_FROG[2] = { "50.jpeg", "51.jpeg" };
 const string VERTICAL_TOWER[2] = { "20.jpeg", "21.jpeg" };
 const string HORIZONTAL_CITY[2] = { "60.jpeg", "61.jpeg" };
 const string HORIZONTAL_BUILDING[5] = { "72.JPG", "71.JPG", "73.JPG", "70.JPG", "74.JPG" };
+const string SOMETHING[10] = { "800.jpeg", "801.jpeg", "802.jpeg", "803.jpeg", "804.jpeg", "805.jpeg",
+    "806.jpeg", "807.jpeg", "808.jpeg", "809.jpeg" };
 
 // Lo cambiable:
 const string IMAGE_SET[5] = { HORIZONTAL_BUILDING[0], HORIZONTAL_BUILDING[1], 
@@ -59,7 +68,10 @@ int main(){
   // Make panorama
   float reject_ratio = 0.6;
   Mat panorama, aux;
+  steady_clock::time_point begin = steady_clock::now();
   makePanorama(images[1], images[0], panorama, reject_ratio);
+  steady_clock::time_point end = steady_clock::now();
+  cout << "Time difference (sec) = " << (duration_cast<microseconds>(end - begin).count()) / 1000000.0 << endl;
   aux = panorama.clone();
   if ((panorama.rows > 1000) || (panorama.cols > 1900)){
     resize(aux, aux, Size(1900, 1000));
@@ -70,7 +82,10 @@ int main(){
   waitKey(0);
   destroyAllWindows();
   for (int i = 2; i < size(IMAGE_SET); i++){ // Add more images to the panorama
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     makePanorama(images[i], panorama, panorama, reject_ratio);
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now(); 
+    cout << "Time difference (sec) = " << (duration_cast<microseconds>(end - begin).count()) / 1000000.0 << endl;
     aux = panorama.clone();
     if ((panorama.rows > 1000) || (panorama.cols > 1900)){
       resize(aux, aux, Size(1900, 1000));
@@ -100,11 +115,11 @@ void makePanorama(const Mat& img1, const Mat& img2, Mat& img_panorama, float rej
   surf->detectAndCompute(img2_gray, noArray(), kpts2, desc2);
   Ptr<DescriptorMatcher> matcher = BFMatcher::create(NormTypes::NORM_L2);
 
-  // Busca un máximo de 2 emparejamientos por descriptor
+  // Search the matches but take only the best 2 of each descriptor
   vector<vector<DMatch>> nn_matches;
   matcher->knnMatch(desc1, desc2, nn_matches, 2);
 
-  // Conservar emparejamiento si es mejor que el segundo más parecido
+  // Discard the matches too similar to the second best one
   matched1.clear();
   matched2.clear();
   for (size_t i = 0; i < nn_matches.size(); i++){
@@ -119,7 +134,7 @@ void makePanorama(const Mat& img1, const Mat& img2, Mat& img_panorama, float rej
     }
   }
 
-  // Mostrar keypoints y matches
+  // Show keypoints and matches
   Mat img_kpts;
   drawKeypoints(img1, kpts1, img_kpts);
   imshow("Keypoints 1", img_kpts);
@@ -133,7 +148,6 @@ void makePanorama(const Mat& img1, const Mat& img2, Mat& img_panorama, float rej
   }
   drawMatches(img1, matched1, img2, matched2, matches, img_matches);
   imshow("Matches", img_matches);
-  waitKey(0);
 
   // RANSAC
   vector<Point2f> puntos_1, puntos_2;
@@ -141,7 +155,17 @@ void makePanorama(const Mat& img1, const Mat& img2, Mat& img_panorama, float rej
       puntos_1.push_back(matched1[i].pt);
       puntos_2.push_back(matched2[i].pt);
   }
-  Mat homography = findHomography(puntos_1, puntos_2, RANSAC);
+  vector<uchar> match_mask;
+  Mat homography = findHomography(puntos_1, puntos_2, RANSAC, 3, match_mask, 2000, 0.995);
+  
+  // Count the inliers found in findHomography
+  int inliers = 0;
+  for (int i = 0; i < match_mask.size(); i++){
+    if (match_mask[i] == 1){
+      inliers++;
+    }
+  }
+  cout << "Inliers found: " << inliers << endl;
 
   // Insert img2 on img1 using the homography
   vector<Point2f> corners_img1(4);
