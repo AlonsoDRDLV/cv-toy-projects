@@ -36,9 +36,7 @@ void orbFAST(Mat image1, Mat image2, float reject_ratio, float scale_factor);
 void sift(Mat image1, Mat image2, float reject_ratio);
 void surf(Mat image1, Mat image2, float reject_ratio);
 void akaze(Mat image1, Mat image2, float reject_ratio);
-vector<Point2f> getCorners(const Mat& img);
-void doPanorama(const Mat& img1, const Mat& img2, Mat& img_panorama, float reject_ratio);
-Mat warpImages(const Mat& img1, const Mat& img2, const Mat& homography);
+void makePanorama(const Mat& img1, const Mat& img2, Mat& img_panorama, float reject_ratio);
 
 
 int main(){
@@ -61,7 +59,7 @@ int main(){
   // Make panorama
   float reject_ratio = 0.6;
   Mat panorama, aux;
-  doPanorama(images[1], images[0], panorama, reject_ratio);
+  makePanorama(images[1], images[0], panorama, reject_ratio);
   aux = panorama.clone();
   if ((panorama.rows > 1000) || (panorama.cols > 1900)){
     resize(aux, aux, Size(1900, 1000));
@@ -72,7 +70,7 @@ int main(){
   waitKey(0);
   destroyAllWindows();
   for (int i = 2; i < size(IMAGE_SET); i++){ // Add more images to the panorama
-    doPanorama(images[i], panorama, panorama, reject_ratio);
+    makePanorama(images[i], panorama, panorama, reject_ratio);
     aux = panorama.clone();
     if ((panorama.rows > 1000) || (panorama.cols > 1900)){
       resize(aux, aux, Size(1900, 1000));
@@ -87,7 +85,7 @@ int main(){
   return EXIT_SUCCESS;
 }
 
-void doPanorama(const Mat& img1, const Mat& img2, Mat& img_panorama, float reject_ratio){
+void makePanorama(const Mat& img1, const Mat& img2, Mat& img_panorama, float reject_ratio){
   Mat img1_gray, img2_gray;
   cvtColor(img1, img1_gray, COLOR_BGR2GRAY);
   cvtColor(img2, img2_gray, COLOR_BGR2GRAY);
@@ -137,45 +135,54 @@ void doPanorama(const Mat& img1, const Mat& img2, Mat& img_panorama, float rejec
   imshow("Matches", img_matches);
   waitKey(0);
 
-   // RANSAC
-   vector<Point2f> puntos_1, puntos_2;
-   for (int i = 0; i < matched1.size(); i++){
-       puntos_1.push_back(matched1[i].pt);
-       puntos_2.push_back(matched2[i].pt);
-   }
-   Mat homography = findHomography(puntos_1, puntos_2, RANSAC);
+  // RANSAC
+  vector<Point2f> puntos_1, puntos_2;
+  for (int i = 0; i < matched1.size(); i++){
+      puntos_1.push_back(matched1[i].pt);
+      puntos_2.push_back(matched2[i].pt);
+  }
+  Mat homography = findHomography(puntos_1, puntos_2, RANSAC);
 
-  img_panorama = warpImages(img1, img2, homography);
-}
+  // Insert img2 on img1 using the homography
+  vector<Point2f> corners_img1(4);
+  corners_img1[0] = Point2f(0, 0);
+  corners_img1[1] = Point2f(0, img1.rows);
+  corners_img1[2] = Point2f(img1.cols, img1.rows);
+  corners_img1[3] = Point2f(img1.cols, 0);
 
-Mat warpImages(const Mat& img1, const Mat& img2, const Mat& homography){
-  // Transformar img1 según homography y colocarle encima img2
-  vector<Point2f> corners_img1 = getCorners(img1);
-  vector<Point2f> corners_img2 = getCorners(img2);
+  vector<Point2f> corners_img2(4);
+  corners_img2[0] = Point2f(0, 0);
+  corners_img2[1] = Point2f(0, img2.rows);
+  corners_img2[2] = Point2f(img2.cols, img2.rows);
+  corners_img2[3] = Point2f(img2.cols, 0);
+
   vector<Point2f> corners_img1_warped;
   perspectiveTransform(corners_img1, corners_img1_warped, homography);
   vector<Point2f> all_corners = corners_img1_warped;
   all_corners.insert(all_corners.end(), corners_img2.begin(), corners_img2.end());
 
-  // Buscar las dimensiones de la imagen final
-  int xmin = INT_MAX, xmax = INT_MIN;
-  int ymin = INT_MAX, ymax = INT_MIN;
-  for (auto corner : all_corners){
-    xmin = min((int)corner.x, xmin);
-    xmax = max((int)corner.x, xmax);
-    ymin = min((int)corner.y, ymin);
-    ymax = max((int)corner.y, ymax);
+  // Calculate final size
+  Point2f corner = all_corners[0];
+  int x_min = corner.x;
+  int y_min = corner.y;
+  int x_max = x_min;
+  int y_max = y_min;
+  for (int i = 1; i < all_corners.size(); i++){
+    corner = all_corners[i];
+    x_min = min((int)corner.x, x_min);
+    x_max = max((int)corner.x, x_max);
+    y_min = min((int)corner.y, y_min);
+    y_max = max((int)corner.y, y_max);
   }
 
-  // Crear matriz de traslacion
+  // Create translation matrix
   Mat translation = Mat::eye(3, 3, CV_64F);
-  translation.at<double>(0, 2) = -xmin;
-  translation.at<double>(1, 2) = -ymin;
-
+  translation.at<double>(0, 2) = -x_min;
+  translation.at<double>(1, 2) = -y_min;
 
   vector<Point2f> corners_result1;
   vector<Point2f> corners_result2;
-  Size result_size = Size(xmax - xmin, ymax - ymin);
+  Size result_size = Size(x_max - x_min, y_max - y_min);
   Mat result1, result2;
   warpPerspective(img1, result1, translation * homography, result_size);
   perspectiveTransform(corners_img1, corners_result1, translation * homography);
@@ -190,35 +197,20 @@ Mat warpImages(const Mat& img1, const Mat& img2, const Mat& homography){
   threshold(result1_gray, mask_result1, 0, 255, THRESH_BINARY);
   threshold(result2_gray, mask_result2, 0, 255, THRESH_BINARY);
 
-  // Mezclar las dos imágenes
+  // Mix the images
   Mat result;
-  int erosion_type = 0;
-  int erosion_size = 2;
-  Mat element = getStructuringElement(erosion_type,
-      Size(2 * erosion_size + 1, 2 * erosion_size + 1),
-      Point(erosion_size, erosion_size));
+  Mat element = getStructuringElement(0, Size(5, 5), Point(2, 2));
   erode(mask_result2, mask_result2, element);
   result = result1.clone();
   result2.copyTo(result, mask_result2);
 
-  return result;
-}
-
-vector<Point2f> getCorners(const Mat& img){
-  int cols = img.cols;
-  int rows = img.rows;
-  vector<Point2f> corners(4);
-  corners[0] = Point2f(0, 0);
-  corners[1] = Point2f(0, rows);
-  corners[2] = Point2f(cols, rows);
-  corners[3] = Point2f(cols, 0);
-  return corners;
+  img_panorama = result;
 }
 
 void orbHarris(Mat image1, Mat image2, float reject_ratio, float scale_factor){
   Mat clone1 = image1.clone();
   Mat clone2 = image2.clone();
-  Mat gray1, gray2, orbResult, result;
+  Mat gray1, gray2, orb_result, result;
   Ptr<ORB> orbHarris = ORB::create(500, scale_factor, 8, 31, 0, 2, ORB::HARRIS_SCORE, 31, 20);
   vector<KeyPoint> key_points1, key_points2;
   Mat descriptors1, descriptors2;
@@ -229,8 +221,8 @@ void orbHarris(Mat image1, Mat image2, float reject_ratio, float scale_factor){
   cvtColor(clone1, gray1, COLOR_BGR2GRAY);
   cvtColor(clone2, gray2, COLOR_BGR2GRAY);
 
-  orbHarris->detectAndCompute(gray1, orbResult, key_points1, descriptors1);
-  orbHarris->detectAndCompute(gray2, orbResult, key_points2, descriptors2);
+  orbHarris->detectAndCompute(gray1, orb_result, key_points1, descriptors1);
+  orbHarris->detectAndCompute(gray2, orb_result, key_points2, descriptors2);
 
   Ptr<BFMatcher> bf = BFMatcher::create(NORM_L2, false);
   bf->knnMatch(descriptors1, descriptors2, matches, 2);
@@ -250,7 +242,7 @@ void orbHarris(Mat image1, Mat image2, float reject_ratio, float scale_factor){
 void orbFAST(Mat image1, Mat image2, float reject_ratio, float scale_factor){
   Mat clone1 = image1.clone();
   Mat clone2 = image2.clone();
-  Mat gray1, gray2, orbResult, result;
+  Mat gray1, gray2, orb_result, result;
   Ptr<ORB> orbFAST = ORB::create(500, scale_factor, 8, 31, 0, 2, ORB::FAST_SCORE, 31, 20);
   vector<KeyPoint> key_points1, key_points2;
   Mat descriptors1, descriptors2;
@@ -261,8 +253,8 @@ void orbFAST(Mat image1, Mat image2, float reject_ratio, float scale_factor){
   cvtColor(clone1, gray1, COLOR_BGR2GRAY);
   cvtColor(clone2, gray2, COLOR_BGR2GRAY);
 
-  orbFAST->detectAndCompute(gray1, orbResult, key_points1, descriptors1);
-  orbFAST->detectAndCompute(gray2, orbResult, key_points2, descriptors2);
+  orbFAST->detectAndCompute(gray1, orb_result, key_points1, descriptors1);
+  orbFAST->detectAndCompute(gray2, orb_result, key_points2, descriptors2);
 
   Ptr<BFMatcher> bf = BFMatcher::create(NORM_L2, false);
   bf->knnMatch(descriptors1, descriptors2, matches, 2);
@@ -281,7 +273,7 @@ void orbFAST(Mat image1, Mat image2, float reject_ratio, float scale_factor){
 void sift(Mat image1, Mat image2, float reject_ratio){
   Mat clone1 = image1.clone();
   Mat clone2 = image2.clone();
-  Mat gray1, gray2, siftResult, result;
+  Mat gray1, gray2, sift_result, result;
   Ptr<SIFT> sift = SIFT::create();
   vector<KeyPoint> key_points1, key_points2;
   Mat descriptors1, descriptors2;
@@ -291,8 +283,8 @@ void sift(Mat image1, Mat image2, float reject_ratio){
 
   cvtColor(clone1, gray1, COLOR_BGR2GRAY);
   cvtColor(clone2, gray2, COLOR_BGR2GRAY);
-  sift->detectAndCompute(gray1, siftResult, key_points1, descriptors1);
-  sift->detectAndCompute(gray2, siftResult, key_points2, descriptors2);
+  sift->detectAndCompute(gray1, sift_result, key_points1, descriptors1);
+  sift->detectAndCompute(gray2, sift_result, key_points2, descriptors2);
 
   Ptr<BFMatcher> bf = BFMatcher::create(NORM_L2, false);
   bf->knnMatch(descriptors1, descriptors2, matches, 2);
@@ -311,7 +303,7 @@ void sift(Mat image1, Mat image2, float reject_ratio){
 void surf(Mat image1, Mat image2, float reject_ratio){
   Mat clone1 = image1.clone();
   Mat clone2 = image2.clone();
-  Mat gray1, gray2, surfResult, result;
+  Mat gray1, gray2, surf_result, result;
   Ptr<SURF> surf = SURF::create();
   vector<KeyPoint> key_points1, key_points2;
   Mat descriptors1, descriptors2;
@@ -322,8 +314,8 @@ void surf(Mat image1, Mat image2, float reject_ratio){
   cvtColor(clone1, gray1, COLOR_BGR2GRAY);
   cvtColor(clone2, gray2, COLOR_BGR2GRAY);
 
-  surf->detectAndCompute(gray1, surfResult, key_points1, descriptors1);
-  surf->detectAndCompute(gray2, surfResult, key_points2, descriptors2);
+  surf->detectAndCompute(gray1, surf_result, key_points1, descriptors1);
+  surf->detectAndCompute(gray2, surf_result, key_points2, descriptors2);
 
   Ptr<BFMatcher> bf = BFMatcher::create(NORM_L2, false);
   bf->knnMatch(descriptors1, descriptors2, matches, 2);
@@ -342,7 +334,7 @@ void surf(Mat image1, Mat image2, float reject_ratio){
 void akaze(Mat image1, Mat image2, float reject_ratio){
   Mat clone1 = image1.clone();
   Mat clone2 = image2.clone();
-  Mat gray1, gray2, akazeResult, result;
+  Mat gray1, gray2, akaze_result, result;
   Ptr<AKAZE> akaze = AKAZE::create();
   vector<KeyPoint> key_points1, key_points2;
   Mat descriptors1, descriptors2;
@@ -353,8 +345,8 @@ void akaze(Mat image1, Mat image2, float reject_ratio){
   cvtColor(clone1, gray1, COLOR_BGR2GRAY);
   cvtColor(clone2, gray2, COLOR_BGR2GRAY);
 
-  akaze->detectAndCompute(gray1, akazeResult, key_points1, descriptors1);
-  akaze->detectAndCompute(gray2, akazeResult, key_points2, descriptors2);
+  akaze->detectAndCompute(gray1, akaze_result, key_points1, descriptors1);
+  akaze->detectAndCompute(gray2, akaze_result, key_points2, descriptors2);
 
   Ptr<BFMatcher> bf = BFMatcher::create(NORM_L2, false);
   bf->knnMatch(descriptors1, descriptors2, matches, 2);
